@@ -1,79 +1,284 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>KOREDE 良eee！！</title>
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<title>Home Scene Editor</title>
 <style>
+  :root {
+    --bg: #F6D6D8;
+    --frame: #E7AEB6;
+    --main: #BFD8A6;
+    --action: #F4B183;
+    --text: #8A7F7A;
+  }
+
   body {
     margin: 0;
-    width: 100vw;
+    font-family: sans-serif;
+    background: #ddd;
+    display: flex;
     height: 100vh;
-    background: #F6D6D8;
+  }
+
+  /* ===== プレビュー ===== */
+  #preview-wrapper {
+    flex: 7;
+    background: #aaa;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: "M PLUS Rounded 1c", sans-serif;
+  }
+
+  #preview {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    background: var(--bg);
     overflow: hidden;
   }
 
-  .container {
-    text-align: center;
-    animation: float 4s ease-in-out infinite;
+  .item {
+    position: absolute;
+    cursor: grab;
+    transform-origin: center center;
   }
 
-  .logo {
-    font-size: 72px;
-    font-weight: 700;
-    transform: rotate(-6deg);
-    background: linear-gradient(90deg, #BFD8A6, #F4B183);
-    -webkit-background-clip: text;
-    color: transparent;
-    text-shadow: 0 6px 14px rgba(0,0,0,0.08);
+  .item.selected {
+    outline: 2px dashed var(--frame);
   }
 
-  .subtitle {
+  /* ===== エディタ ===== */
+  #editor {
+    flex: 3;
+    background: #fff;
+    border-left: 4px solid var(--frame);
+    padding: 12px;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  h3 {
+    margin-top: 16px;
+    color: var(--text);
+  }
+
+  label {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  input[type="range"],
+  input[type="file"] {
+    width: 100%;
+  }
+
+  button {
     margin-top: 8px;
-    font-size: 32px;
-    color: #8A7F7A;
-  }
-
-  .ruby {
-    margin-top: 4px;
-    font-size: 16px;
-    color: #8A7F7A;
-    opacity: 0.7;
-  }
-
-  .start-btn {
-    margin-top: 40px;
-    padding: 16px 48px;
-    font-size: 24px;
-    border-radius: 999px;
+    padding: 8px;
+    width: 100%;
+    background: var(--action);
     border: none;
-    background: #F4B183;
-    color: #8A7F7A;
+    border-radius: 8px;
+    color: var(--text);
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    transition: transform 0.2s;
   }
 
-  .start-btn:hover {
-    transform: translateY(-2px);
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-12px); }
+  textarea {
+    width: 100%;
+    height: 200px;
+    margin-top: 8px;
   }
 </style>
 </head>
+
 <body>
-  <div class="container">
-    <div class="logo">KOREDE 良eee！！</div>
-    <div class="subtitle">🧡 来々！推し活ライフ♪</div>
-    <div class="ruby">（これで いいー！！🧡 like like おしかつらいふ♪）</div>
-    <button class="start-btn">START</button>
-  </div>
+
+<!-- ===== 左：プレビュー ===== -->
+<div id="preview-wrapper">
+  <div id="preview"></div>
+</div>
+
+<!-- ===== 右：エディタ ===== -->
+<div id="editor">
+
+  <h3>背景</h3>
+  <input type="file" accept="image/*" id="bgUpload" />
+
+  <h3>画像パーツ追加</h3>
+  <input type="file" accept="image/*" id="imgUpload" />
+
+  <h3>サイズ</h3>
+  <input type="range" id="scaleSlider" min="0.2" max="2" step="0.01" value="1" />
+
+  <h3>アニメーション</h3>
+  <label>浮遊</label>
+  <input type="range" id="floatSlider" min="0" max="20" step="1" value="0" />
+
+  <label>横揺れ</label>
+  <input type="range" id="swaySlider" min="0" max="20" step="1" value="0" />
+
+  <label>点滅</label>
+  <input type="range" id="blinkSlider" min="0" max="1" step="1" value="0" />
+
+  <h3>BGM</h3>
+  <input type="file" accept="audio/*" id="bgmUpload" />
+  <label>音量</label>
+  <input type="range" id="bgmVolume" min="0" max="1" step="0.01" value="0.6" />
+
+  <button id="exportBtn">JSON表示</button>
+  <textarea id="output"></textarea>
+
+</div>
+
+<script>
+const preview = document.getElementById("preview");
+let items = [];
+let selected = null;
+
+/* ===== 背景 ===== */
+document.getElementById("bgUpload").onchange = e => {
+  const file = e.target.files[0];
+  const url = URL.createObjectURL(file);
+  preview.style.backgroundImage = `url(${url})`;
+  preview.style.backgroundSize = "cover";
+};
+
+/* ===== 画像追加 ===== */
+document.getElementById("imgUpload").onchange = e => {
+  const file = e.target.files[0];
+  const img = document.createElement("img");
+  img.src = URL.createObjectURL(file);
+  img.className = "item";
+  img.style.left = "50%";
+  img.style.top = "50%";
+  img.style.transform = "translate(-50%, -50%) scale(1)";
+  preview.appendChild(img);
+
+  const data = {
+    el: img,
+    x: 640,
+    y: 360,
+    scale: 1,
+    float: 0,
+    sway: 0,
+    blink: 0,
+    image: file.name
+  };
+  items.push(data);
+  selectItem(data);
+  enableDrag(data);
+};
+
+/* ===== 選択 ===== */
+function selectItem(data) {
+  items.forEach(i => i.el.classList.remove("selected"));
+  selected = data;
+  data.el.classList.add("selected");
+  document.getElementById("scaleSlider").value = data.scale;
+  document.getElementById("floatSlider").value = data.float;
+  document.getElementById("swaySlider").value = data.sway;
+  document.getElementById("blinkSlider").value = data.blink;
+}
+
+/* ===== ドラッグ ===== */
+function enableDrag(data) {
+  let dragging = false;
+  data.el.onmousedown = e => {
+    dragging = true;
+    selectItem(data);
+  };
+  window.onmouseup = () => dragging = false;
+  window.onmousemove = e => {
+    if (!dragging) return;
+    const rect = preview.getBoundingClientRect();
+    data.x = e.clientX - rect.left;
+    data.y = e.clientY - rect.top;
+    data.el.style.left = data.x + "px";
+    data.el.style.top = data.y + "px";
+  };
+}
+
+/* ===== サイズ ===== */
+document.getElementById("scaleSlider").oninput = e => {
+  if (!selected) return;
+  selected.scale = e.target.value;
+  updateTransform(selected);
+};
+
+/* ===== アニメ ===== */
+["float","sway","blink"].forEach(type => {
+  document.getElementById(type + "Slider").oninput = e => {
+    if (!selected) return;
+    selected[type] = Number(e.target.value);
+    updateAnimation(selected);
+  };
+});
+
+function updateTransform(d) {
+  d.el.style.transform =
+    `translate(-50%, -50%) scale(${d.scale})`;
+}
+
+function updateAnimation(d) {
+  let anim = [];
+  if (d.float > 0) anim.push(`floatY ${3 + d.float/5}s ease-in-out infinite`);
+  if (d.sway > 0) anim.push(`swayX ${3 + d.sway/5}s ease-in-out infinite`);
+  if (d.blink > 0) anim.push(`blink 2s infinite`);
+  d.el.style.animation = anim.join(",");
+}
+
+/* ===== BGM ===== */
+let bgm = null;
+document.getElementById("bgmUpload").onchange = e => {
+  const file = e.target.files[0];
+  if (bgm) bgm.pause();
+  bgm = new Audio(URL.createObjectURL(file));
+  bgm.loop = true;
+  bgm.volume = document.getElementById("bgmVolume").value;
+  bgm.play();
+};
+document.getElementById("bgmVolume").oninput = e => {
+  if (bgm) bgm.volume = e.target.value;
+};
+
+/* ===== JSON出力 ===== */
+document.getElementById("exportBtn").onclick = () => {
+  const json = {
+    scene: "home",
+    canvas: { baseWidth: 1280, baseHeight: 720 },
+    objects: items.map(i => ({
+      image: i.image,
+      x: Math.round(i.x),
+      y: Math.round(i.y),
+      scale: Number(i.scale),
+      animation: {
+        float: i.float,
+        sway: i.sway,
+        blink: i.blink
+      }
+    }))
+  };
+  document.getElementById("output").value =
+    JSON.stringify(json, null, 2);
+};
+
+/* ===== アニメCSS ===== */
+const style = document.createElement("style");
+style.textContent = `
+@keyframes floatY {
+  0%,100%{transform:translate(-50%,-50%) translateY(0)}
+  50%{transform:translate(-50%,-50%) translateY(-12px)}
+}
+@keyframes swayX {
+  0%,100%{transform:translate(-50%,-50%) translateX(0)}
+  50%{transform:translate(-50%,-50%) translateX(12px)}
+}
+@keyframes blink {
+  0%,100%{opacity:1}
+  50%{opacity:0.3}
+}`;
+document.head.appendChild(style);
+</script>
+
 </body>
 </html>
