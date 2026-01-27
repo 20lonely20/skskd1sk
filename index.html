@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Canvas Editor Snapshot Log</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Game Editor Touch+BGM</title>
 
 <style>
 body{
@@ -20,6 +20,7 @@ body{
   justify-content:center;
   align-items:center;
   background:#000;
+  touch-action:none;
 }
 canvas{ background:#555; }
 
@@ -29,49 +30,26 @@ canvas{ background:#555; }
   background:#333;
   overflow:auto;
 }
-
-h3{
-  margin:8px 0 4px;
-  font-size:14px;
-}
+h3{ font-size:14px; margin:8px 0 4px; }
+label{ font-size:12px; display:block; margin-top:6px; }
+input,button{ width:100%; }
 
 .layer-item{
-  display:flex;
-  align-items:center;
-  gap:4px;
-  padding:4px;
   background:#444;
+  padding:4px;
   margin-bottom:4px;
+  font-size:11px;
   cursor:pointer;
 }
 .layer-item.active{ background:#666; }
-.layer-item span{
-  flex:1;
-  font-size:11px;
-}
-.layer-item button{ width:24px; }
-
-label{
-  display:block;
-  font-size:12px;
-  margin-top:6px;
-}
-input{ width:100%; }
 
 #logBox{
   background:#111;
   font-size:11px;
-  padding:6px;
-  margin-top:6px;
   white-space:pre-wrap;
-  max-height:300px;
+  padding:6px;
+  max-height:200px;
   overflow:auto;
-}
-.log-new{
-  color:#ff8;
-  border-bottom:1px solid #333;
-  padding-bottom:6px;
-  margin-bottom:8px;
 }
 </style>
 </head>
@@ -83,165 +61,119 @@ input{ width:100%; }
 </div>
 
 <div id="panel">
-  <label>
-    画像追加
-    <input type="file" id="imgInput">
-  </label>
+  <label>画像追加 <input type="file" id="imgInput"></label>
 
-  <h3>レイヤー一覧（①が最前面）</h3>
+  <h3>レイヤー一覧（①最前面）</h3>
   <div id="layerList"></div>
 
-  <h3>選択レイヤー編集</h3>
-  <label>X <input type="number" id="xI"></label>
-  <label>Y <input type="number" id="yI"></label>
-  <label>Scale <input type="number" step="0.01" id="sI"></label>
-  <label>Rotate <input type="number" id="rI"></label>
-  <label>Float（0〜10） <input type="number" min="0" max="10" id="fI"></label>
-  <label>Speed（1〜10） <input type="number" min="1" max="10" id="spI"></label>
+  <h3>BGM</h3>
+  <label>BGMアップロード <input type="file" id="bgmInput"></label>
+  <button id="playBgm">▶ 再生</button>
+  <button id="stopBgm">■ 停止</button>
+  <label>音量 <input type="range" min="0" max="1" step="0.01" id="bgmVol"></label>
 
-  <button id="snapshotBtn">この画面を丸ごと保存（ログ）</button>
+  <button id="snapshotBtn">画面スナップショット保存</button>
 
-  <h3>ログ履歴（完全スナップショット）</h3>
+  <h3>ログ</h3>
   <div id="logBox"></div>
 </div>
 
 <script>
 /* ===== 基本 ===== */
-const BASE_W = 1280;
-const BASE_H = 720;
-const FLOAT_PX = 4;
-const SPEED_UNIT = 0.8;
+const BASE_W=1280, BASE_H=720;
+const FLOAT_PX=4, SPEED_UNIT=0.8;
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const wrap=document.getElementById("canvasWrap");
 
 /* ===== resize ===== */
 function resize(){
-  const wrap = document.getElementById("canvasWrap");
-  const r = wrap.getBoundingClientRect();
-  const scale = Math.min(r.width/BASE_W, r.height/BASE_H);
-  canvas.width = BASE_W * scale;
-  canvas.height = BASE_H * scale;
-  ctx.setTransform(scale,0,0,scale,0,0);
+  const r=wrap.getBoundingClientRect();
+  const sc=Math.min(r.width/BASE_W,r.height/BASE_H);
+  canvas.width=BASE_W*sc;
+  canvas.height=BASE_H*sc;
+  ctx.setTransform(sc,0,0,sc,0,0);
 }
-window.addEventListener("resize", resize);
+window.addEventListener("resize",resize);
 resize();
 
 /* ===== データ ===== */
-let layers = []; // index0 = 最前面
-let current = null;
+let layers=[], current=null;
 
-/* ===== UI参照 ===== */
-const listEl = document.getElementById("layerList");
-const xI = document.getElementById("xI");
-const yI = document.getElementById("yI");
-const sI = document.getElementById("sI");
-const rI = document.getElementById("rI");
-const fI = document.getElementById("fI");
-const spI = document.getElementById("spI");
-const logBox = document.getElementById("logBox");
+/* ===== BGM ===== */
+const bgm=new Audio();
+bgm.loop=true;
+document.getElementById("bgmInput").onchange=e=>{
+  bgm.src=URL.createObjectURL(e.target.files[0]);
+};
+document.getElementById("playBgm").onclick=()=>bgm.play();
+document.getElementById("stopBgm").onclick=()=>bgm.pause();
+document.getElementById("bgmVol").oninput=e=>bgm.volume=e.target.value;
+
+/* ===== UI ===== */
+const listEl=document.getElementById("layerList");
+const logBox=document.getElementById("logBox");
 
 /* ===== 画像追加 ===== */
-document.getElementById("imgInput").onchange = e=>{
-  const file = e.target.files[0];
-  const img = new Image();
-  img.onload = ()=>{
-    const layer = {
-      name:file.name,
-      img,
-      x:BASE_W/2,
-      y:BASE_H/2,
-      scale:1,
-      rotate:0,
-      float:0,
-      speed:5
-    };
-    layers.unshift(layer);
-    current = layer;
-    refreshUI();
+document.getElementById("imgInput").onchange=e=>{
+  const f=e.target.files[0];
+  const img=new Image();
+  img.onload=()=>{
+    const l={name:f.name,img,x:BASE_W/2,y:BASE_H/2,scale:1,rotate:0,float:0,speed:3};
+    layers.unshift(l); current=l; refreshUI();
   };
-  img.src = URL.createObjectURL(file);
+  img.src=URL.createObjectURL(f);
 };
 
-/* ===== レイヤー一覧 ===== */
+/* ===== レイヤーUI ===== */
 function refreshUI(){
   listEl.innerHTML="";
   layers.forEach((l,i)=>{
-    const div=document.createElement("div");
-    div.className="layer-item"+(l===current?" active":"");
-    div.onclick=()=>{ current=l; refreshUI(); };
-
-    const label=document.createElement("span");
-    label.textContent=`${i+1}｜${l.name}`;
-    div.appendChild(label);
-
-    const up=document.createElement("button");
-    up.textContent="▲";
-    up.onclick=e=>{
-      e.stopPropagation();
-      if(i>0){ [layers[i-1],layers[i]]=[layers[i],layers[i-1]]; refreshUI(); }
-    };
-    div.appendChild(up);
-
-    const down=document.createElement("button");
-    down.textContent="▼";
-    down.onclick=e=>{
-      e.stopPropagation();
-      if(i<layers.length-1){ [layers[i+1],layers[i]]=[layers[i],layers[i+1]]; refreshUI(); }
-    };
-    div.appendChild(down);
-
-    listEl.appendChild(div);
+    const d=document.createElement("div");
+    d.className="layer-item"+(l===current?" active":"");
+    d.textContent=`${i+1} ${l.name}`;
+    d.onclick=()=>{current=l; refreshUI();};
+    listEl.appendChild(d);
   });
-
-  if(current){
-    xI.value=current.x;
-    yI.value=current.y;
-    sI.value=current.scale;
-    rI.value=current.rotate;
-    fI.value=current.float;
-    spI.value=current.speed;
-  }
 }
 
-/* ===== 数値反映 ===== */
-[xI,yI,sI,rI,fI,spI].forEach(inp=>{
-  inp.oninput=()=>{
-    if(!current) return;
-    current.x=+xI.value;
-    current.y=+yI.value;
-    current.scale=+sI.value;
-    current.rotate=+rI.value;
-    current.float=+fI.value;
-    current.speed=+spI.value;
-    refreshUI();
-  };
+/* ===== タッチ操作 ===== */
+let pointers=new Map();
+wrap.addEventListener("pointerdown",e=>{
+  wrap.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+});
+wrap.addEventListener("pointerup",e=>pointers.delete(e.pointerId));
+wrap.addEventListener("pointercancel",e=>pointers.delete(e.pointerId));
+
+wrap.addEventListener("pointermove",e=>{
+  if(!current||!pointers.has(e.pointerId)) return;
+  const prev=pointers.get(e.pointerId);
+  const dx=e.clientX-prev.x;
+  const dy=e.clientY-prev.y;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  const rect=canvas.getBoundingClientRect();
+  if(pointers.size===1){
+    current.x+=dx*BASE_W/rect.width;
+    current.y+=dy*BASE_H/rect.height;
+  }
+  if(pointers.size===2){
+    const pts=[...pointers.values()];
+    const dist=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+    current.scale+=dx*0.005;
+    current.rotate+=dx*0.2;
+  }
 });
 
-/* ===== ドラッグ ===== */
-let drag=false;
-canvas.onmousedown=()=>drag=true;
-canvas.onmouseup=()=>drag=false;
-canvas.onmousemove=e=>{
-  if(!drag||!current) return;
-  const r=canvas.getBoundingClientRect();
-  current.x=(e.clientX-r.left)*BASE_W/canvas.width;
-  current.y=(e.clientY-r.top)*BASE_H/canvas.height;
-  refreshUI();
-};
-
-/* ===== スナップショットログ ===== */
+/* ===== スナップショット ===== */
 snapshotBtn.onclick=()=>{
-  const time=new Date().toLocaleTimeString();
-  let text=`[${time}] SNAPSHOT\nLAYERS (① top):\n\n`;
+  let txt=`BGM volume:${bgm.volume}\nLAYERS:\n`;
   layers.forEach((l,i)=>{
-    text+=`${i+1} ${l.name}\n`;
-    text+=`   x:${l.x} y:${l.y} s:${l.scale} r:${l.rotate} f:${l.float} sp:${l.speed}\n\n`;
+    txt+=`${i+1} ${l.name} x:${l.x} y:${l.y} s:${l.scale} r:${l.rotate}\n`;
   });
-  const div=document.createElement("div");
-  div.className="log-new";
-  div.textContent=text.trim();
-  logBox.prepend(div);
+  logBox.prepend(Object.assign(document.createElement("div"),{textContent:txt}));
 };
 
 /* ===== 描画 ===== */
@@ -250,7 +182,6 @@ function draw(){
   const t=(performance.now()-start)/1000;
   ctx.fillStyle="#555";
   ctx.fillRect(0,0,BASE_W,BASE_H);
-
   layers.slice().reverse().forEach(l=>{
     if(!l.img.complete) return;
     const fy=Math.sin(t*l.speed*SPEED_UNIT)*l.float*FLOAT_PX;
@@ -263,7 +194,7 @@ function draw(){
   });
   requestAnimationFrame(draw);
 }
-requestAnimationFrame(draw);
+draw();
 </script>
 
 </body>
