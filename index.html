@@ -1,283 +1,269 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<title>Home Scene Editor</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas Editor Snapshot Log</title>
+
 <style>
-  :root {
-    --bg: #F6D6D8;
-    --frame: #E7AEB6;
-    --main: #BFD8A6;
-    --action: #F4B183;
-    --text: #8A7F7A;
-  }
+body{
+  margin:0;
+  display:flex;
+  height:100vh;
+  background:#222;
+  color:#fff;
+  font-family:sans-serif;
+}
+#canvasWrap{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#000;
+}
+canvas{ background:#555; }
 
-  body {
-    margin: 0;
-    font-family: sans-serif;
-    background: #ddd;
-    display: flex;
-    height: 100vh;
-  }
+#panel{
+  width:420px;
+  padding:10px;
+  background:#333;
+  overflow:auto;
+}
 
-  /* ===== プレビュー ===== */
-  #preview-wrapper {
-    flex: 7;
-    background: #aaa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+h3{
+  margin:8px 0 4px;
+  font-size:14px;
+}
 
-  #preview {
-    position: relative;
-    width: 1280px;
-    height: 720px;
-    background: var(--bg);
-    overflow: hidden;
-  }
+.layer-item{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  padding:4px;
+  background:#444;
+  margin-bottom:4px;
+  cursor:pointer;
+}
+.layer-item.active{ background:#666; }
+.layer-item span{
+  flex:1;
+  font-size:11px;
+}
+.layer-item button{ width:24px; }
 
-  .item {
-    position: absolute;
-    cursor: grab;
-    transform-origin: center center;
-  }
+label{
+  display:block;
+  font-size:12px;
+  margin-top:6px;
+}
+input{ width:100%; }
 
-  .item.selected {
-    outline: 2px dashed var(--frame);
-  }
-
-  /* ===== エディタ ===== */
-  #editor {
-    flex: 3;
-    background: #fff;
-    border-left: 4px solid var(--frame);
-    padding: 12px;
-    box-sizing: border-box;
-    overflow-y: auto;
-  }
-
-  h3 {
-    margin-top: 16px;
-    color: var(--text);
-  }
-
-  label {
-    font-size: 13px;
-    color: var(--text);
-  }
-
-  input[type="range"],
-  input[type="file"] {
-    width: 100%;
-  }
-
-  button {
-    margin-top: 8px;
-    padding: 8px;
-    width: 100%;
-    background: var(--action);
-    border: none;
-    border-radius: 8px;
-    color: var(--text);
-    cursor: pointer;
-  }
-
-  textarea {
-    width: 100%;
-    height: 200px;
-    margin-top: 8px;
-  }
+#logBox{
+  background:#111;
+  font-size:11px;
+  padding:6px;
+  margin-top:6px;
+  white-space:pre-wrap;
+  max-height:300px;
+  overflow:auto;
+}
+.log-new{
+  color:#ff8;
+  border-bottom:1px solid #333;
+  padding-bottom:6px;
+  margin-bottom:8px;
+}
 </style>
 </head>
 
 <body>
 
-<!-- ===== 左：プレビュー ===== -->
-<div id="preview-wrapper">
-  <div id="preview"></div>
+<div id="canvasWrap">
+  <canvas id="canvas"></canvas>
 </div>
 
-<!-- ===== 右：エディタ ===== -->
-<div id="editor">
+<div id="panel">
+  <label>
+    画像追加
+    <input type="file" id="imgInput">
+  </label>
 
-  <h3>背景</h3>
-  <input type="file" accept="image/*" id="bgUpload" />
+  <h3>レイヤー一覧（①が最前面）</h3>
+  <div id="layerList"></div>
 
-  <h3>画像パーツ追加</h3>
-  <input type="file" accept="image/*" id="imgUpload" />
+  <h3>選択レイヤー編集</h3>
+  <label>X <input type="number" id="xI"></label>
+  <label>Y <input type="number" id="yI"></label>
+  <label>Scale <input type="number" step="0.01" id="sI"></label>
+  <label>Rotate <input type="number" id="rI"></label>
+  <label>Float（0〜10） <input type="number" min="0" max="10" id="fI"></label>
+  <label>Speed（1〜10） <input type="number" min="1" max="10" id="spI"></label>
 
-  <h3>サイズ</h3>
-  <input type="range" id="scaleSlider" min="0.2" max="2" step="0.01" value="1" />
+  <button id="snapshotBtn">この画面を丸ごと保存（ログ）</button>
 
-  <h3>アニメーション</h3>
-  <label>浮遊</label>
-  <input type="range" id="floatSlider" min="0" max="20" step="1" value="0" />
-
-  <label>横揺れ</label>
-  <input type="range" id="swaySlider" min="0" max="20" step="1" value="0" />
-
-  <label>点滅</label>
-  <input type="range" id="blinkSlider" min="0" max="1" step="1" value="0" />
-
-  <h3>BGM</h3>
-  <input type="file" accept="audio/*" id="bgmUpload" />
-  <label>音量</label>
-  <input type="range" id="bgmVolume" min="0" max="1" step="0.01" value="0.6" />
-
-  <button id="exportBtn">JSON表示</button>
-  <textarea id="output"></textarea>
-
+  <h3>ログ履歴（完全スナップショット）</h3>
+  <div id="logBox"></div>
 </div>
 
 <script>
-const preview = document.getElementById("preview");
-let items = [];
-let selected = null;
+/* ===== 基本 ===== */
+const BASE_W = 1280;
+const BASE_H = 720;
+const FLOAT_PX = 4;
+const SPEED_UNIT = 0.8;
 
-/* ===== 背景 ===== */
-document.getElementById("bgUpload").onchange = e => {
-  const file = e.target.files[0];
-  const url = URL.createObjectURL(file);
-  preview.style.backgroundImage = `url(${url})`;
-  preview.style.backgroundSize = "cover";
-};
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+/* ===== resize ===== */
+function resize(){
+  const wrap = document.getElementById("canvasWrap");
+  const r = wrap.getBoundingClientRect();
+  const scale = Math.min(r.width/BASE_W, r.height/BASE_H);
+  canvas.width = BASE_W * scale;
+  canvas.height = BASE_H * scale;
+  ctx.setTransform(scale,0,0,scale,0,0);
+}
+window.addEventListener("resize", resize);
+resize();
+
+/* ===== データ ===== */
+let layers = []; // index0 = 最前面
+let current = null;
+
+/* ===== UI参照 ===== */
+const listEl = document.getElementById("layerList");
+const xI = document.getElementById("xI");
+const yI = document.getElementById("yI");
+const sI = document.getElementById("sI");
+const rI = document.getElementById("rI");
+const fI = document.getElementById("fI");
+const spI = document.getElementById("spI");
+const logBox = document.getElementById("logBox");
 
 /* ===== 画像追加 ===== */
-document.getElementById("imgUpload").onchange = e => {
+document.getElementById("imgInput").onchange = e=>{
   const file = e.target.files[0];
-  const img = document.createElement("img");
+  const img = new Image();
+  img.onload = ()=>{
+    const layer = {
+      name:file.name,
+      img,
+      x:BASE_W/2,
+      y:BASE_H/2,
+      scale:1,
+      rotate:0,
+      float:0,
+      speed:5
+    };
+    layers.unshift(layer);
+    current = layer;
+    refreshUI();
+  };
   img.src = URL.createObjectURL(file);
-  img.className = "item";
-  img.style.left = "50%";
-  img.style.top = "50%";
-  img.style.transform = "translate(-50%, -50%) scale(1)";
-  preview.appendChild(img);
-
-  const data = {
-    el: img,
-    x: 640,
-    y: 360,
-    scale: 1,
-    float: 0,
-    sway: 0,
-    blink: 0,
-    image: file.name
-  };
-  items.push(data);
-  selectItem(data);
-  enableDrag(data);
 };
 
-/* ===== 選択 ===== */
-function selectItem(data) {
-  items.forEach(i => i.el.classList.remove("selected"));
-  selected = data;
-  data.el.classList.add("selected");
-  document.getElementById("scaleSlider").value = data.scale;
-  document.getElementById("floatSlider").value = data.float;
-  document.getElementById("swaySlider").value = data.sway;
-  document.getElementById("blinkSlider").value = data.blink;
+/* ===== レイヤー一覧 ===== */
+function refreshUI(){
+  listEl.innerHTML="";
+  layers.forEach((l,i)=>{
+    const div=document.createElement("div");
+    div.className="layer-item"+(l===current?" active":"");
+    div.onclick=()=>{ current=l; refreshUI(); };
+
+    const label=document.createElement("span");
+    label.textContent=`${i+1}｜${l.name}`;
+    div.appendChild(label);
+
+    const up=document.createElement("button");
+    up.textContent="▲";
+    up.onclick=e=>{
+      e.stopPropagation();
+      if(i>0){ [layers[i-1],layers[i]]=[layers[i],layers[i-1]]; refreshUI(); }
+    };
+    div.appendChild(up);
+
+    const down=document.createElement("button");
+    down.textContent="▼";
+    down.onclick=e=>{
+      e.stopPropagation();
+      if(i<layers.length-1){ [layers[i+1],layers[i]]=[layers[i],layers[i+1]]; refreshUI(); }
+    };
+    div.appendChild(down);
+
+    listEl.appendChild(div);
+  });
+
+  if(current){
+    xI.value=current.x;
+    yI.value=current.y;
+    sI.value=current.scale;
+    rI.value=current.rotate;
+    fI.value=current.float;
+    spI.value=current.speed;
+  }
 }
 
-/* ===== ドラッグ ===== */
-function enableDrag(data) {
-  let dragging = false;
-  data.el.onmousedown = e => {
-    dragging = true;
-    selectItem(data);
-  };
-  window.onmouseup = () => dragging = false;
-  window.onmousemove = e => {
-    if (!dragging) return;
-    const rect = preview.getBoundingClientRect();
-    data.x = e.clientX - rect.left;
-    data.y = e.clientY - rect.top;
-    data.el.style.left = data.x + "px";
-    data.el.style.top = data.y + "px";
-  };
-}
-
-/* ===== サイズ ===== */
-document.getElementById("scaleSlider").oninput = e => {
-  if (!selected) return;
-  selected.scale = e.target.value;
-  updateTransform(selected);
-};
-
-/* ===== アニメ ===== */
-["float","sway","blink"].forEach(type => {
-  document.getElementById(type + "Slider").oninput = e => {
-    if (!selected) return;
-    selected[type] = Number(e.target.value);
-    updateAnimation(selected);
+/* ===== 数値反映 ===== */
+[xI,yI,sI,rI,fI,spI].forEach(inp=>{
+  inp.oninput=()=>{
+    if(!current) return;
+    current.x=+xI.value;
+    current.y=+yI.value;
+    current.scale=+sI.value;
+    current.rotate=+rI.value;
+    current.float=+fI.value;
+    current.speed=+spI.value;
+    refreshUI();
   };
 });
 
-function updateTransform(d) {
-  d.el.style.transform =
-    `translate(-50%, -50%) scale(${d.scale})`;
-}
-
-function updateAnimation(d) {
-  let anim = [];
-  if (d.float > 0) anim.push(`floatY ${3 + d.float/5}s ease-in-out infinite`);
-  if (d.sway > 0) anim.push(`swayX ${3 + d.sway/5}s ease-in-out infinite`);
-  if (d.blink > 0) anim.push(`blink 2s infinite`);
-  d.el.style.animation = anim.join(",");
-}
-
-/* ===== BGM ===== */
-let bgm = null;
-document.getElementById("bgmUpload").onchange = e => {
-  const file = e.target.files[0];
-  if (bgm) bgm.pause();
-  bgm = new Audio(URL.createObjectURL(file));
-  bgm.loop = true;
-  bgm.volume = document.getElementById("bgmVolume").value;
-  bgm.play();
-};
-document.getElementById("bgmVolume").oninput = e => {
-  if (bgm) bgm.volume = e.target.value;
+/* ===== ドラッグ ===== */
+let drag=false;
+canvas.onmousedown=()=>drag=true;
+canvas.onmouseup=()=>drag=false;
+canvas.onmousemove=e=>{
+  if(!drag||!current) return;
+  const r=canvas.getBoundingClientRect();
+  current.x=(e.clientX-r.left)*BASE_W/canvas.width;
+  current.y=(e.clientY-r.top)*BASE_H/canvas.height;
+  refreshUI();
 };
 
-/* ===== JSON出力 ===== */
-document.getElementById("exportBtn").onclick = () => {
-  const json = {
-    scene: "home",
-    canvas: { baseWidth: 1280, baseHeight: 720 },
-    objects: items.map(i => ({
-      image: i.image,
-      x: Math.round(i.x),
-      y: Math.round(i.y),
-      scale: Number(i.scale),
-      animation: {
-        float: i.float,
-        sway: i.sway,
-        blink: i.blink
-      }
-    }))
-  };
-  document.getElementById("output").value =
-    JSON.stringify(json, null, 2);
+/* ===== スナップショットログ ===== */
+snapshotBtn.onclick=()=>{
+  const time=new Date().toLocaleTimeString();
+  let text=`[${time}] SNAPSHOT\nLAYERS (① top):\n\n`;
+  layers.forEach((l,i)=>{
+    text+=`${i+1} ${l.name}\n`;
+    text+=`   x:${l.x} y:${l.y} s:${l.scale} r:${l.rotate} f:${l.float} sp:${l.speed}\n\n`;
+  });
+  const div=document.createElement("div");
+  div.className="log-new";
+  div.textContent=text.trim();
+  logBox.prepend(div);
 };
 
-/* ===== アニメCSS ===== */
-const style = document.createElement("style");
-style.textContent = `
-@keyframes floatY {
-  0%,100%{transform:translate(-50%,-50%) translateY(0)}
-  50%{transform:translate(-50%,-50%) translateY(-12px)}
+/* ===== 描画 ===== */
+let start=performance.now();
+function draw(){
+  const t=(performance.now()-start)/1000;
+  ctx.fillStyle="#555";
+  ctx.fillRect(0,0,BASE_W,BASE_H);
+
+  layers.slice().reverse().forEach(l=>{
+    if(!l.img.complete) return;
+    const fy=Math.sin(t*l.speed*SPEED_UNIT)*l.float*FLOAT_PX;
+    ctx.save();
+    ctx.translate(l.x,l.y+fy);
+    ctx.rotate(l.rotate*Math.PI/180);
+    ctx.scale(l.scale,l.scale);
+    ctx.drawImage(l.img,-l.img.width/2,-l.img.height/2);
+    ctx.restore();
+  });
+  requestAnimationFrame(draw);
 }
-@keyframes swayX {
-  0%,100%{transform:translate(-50%,-50%) translateX(0)}
-  50%{transform:translate(-50%,-50%) translateX(12px)}
-}
-@keyframes blink {
-  0%,100%{opacity:1}
-  50%{opacity:0.3}
-}`;
-document.head.appendChild(style);
+requestAnimationFrame(draw);
 </script>
 
 </body>
