@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>Game Editor Touch FIXED</title>
+<title>Canvas Editor FINAL STABLE</title>
 
 <style>
 body{
@@ -25,14 +25,12 @@ canvas{
   background:#555;
   touch-action:none;
 }
-
 #panel{
   width:420px;
   padding:10px;
   background:#333;
   overflow:auto;
 }
-
 .layer-item{
   background:#444;
   padding:4px;
@@ -41,10 +39,8 @@ canvas{
   cursor:pointer;
 }
 .layer-item.active{ background:#666; }
-
 label{ font-size:12px; display:block; margin-top:6px; }
 input,button{ width:100%; }
-
 #logBox{
   background:#111;
   font-size:11px;
@@ -67,7 +63,7 @@ input,button{ width:100%; }
 
   <div id="layerList"></div>
 
-  <h3>数値調整</h3>
+  <h3>数値調整（安全）</h3>
   <label>X <input type="number" id="xI"></label>
   <label>Y <input type="number" id="yI"></label>
   <label>Scale <input type="number" step="0.01" id="sI"></label>
@@ -86,10 +82,10 @@ const FLOAT_PX=4, SPEED_UNIT=0.8;
 
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
+const wrap=document.getElementById("canvasWrap");
 
 /* ===== resize ===== */
 function resize(){
-  const wrap=document.getElementById("canvasWrap");
   const r=wrap.getBoundingClientRect();
   const sc=Math.min(r.width/BASE_W,r.height/BASE_H);
   canvas.width=BASE_W*sc;
@@ -99,10 +95,11 @@ function resize(){
 window.addEventListener("resize",resize);
 resize();
 
-/* ===== データ ===== */
-let layers=[], current=null;
+/* ===== 状態 ===== */
+let layers=[];
+let current=null;
 
-/* ===== UI ===== */
+/* ===== UI参照 ===== */
 const listEl=document.getElementById("layerList");
 const xI=document.getElementById("xI");
 const yI=document.getElementById("yI");
@@ -119,46 +116,49 @@ imgInput.onchange=e=>{
   img.onload=()=>{
     const l={name:f.name,img,x:BASE_W/2,y:BASE_H/2,scale:1,rotate:0,float:0,speed:5};
     layers.unshift(l);
-    current=l;
-    refreshUI();
+    setCurrent(l);
   };
   img.src=URL.createObjectURL(f);
 };
 
 /* ===== レイヤーUI ===== */
-function refreshUI(){
+function renderLayerList(){
   listEl.innerHTML="";
   layers.forEach((l,i)=>{
     const d=document.createElement("div");
     d.className="layer-item"+(l===current?" active":"");
     d.textContent=`${i+1} ${l.name}`;
-    d.onclick=()=>{current=l; refreshUI();};
+    d.onclick=()=>setCurrent(l);
     listEl.appendChild(d);
   });
-  if(current){
-    xI.value=current.x;
-    yI.value=current.y;
-    sI.value=current.scale;
-    rI.value=current.rotate;
-    fI.value=current.float;
-    spI.value=current.speed;
-  }
 }
 
-/* ===== 数値反映 ===== */
-[xI,yI,sI,rI,fI,spI].forEach(inp=>{
-  inp.oninput=()=>{
-    if(!current) return;
-    current.x=+xI.value;
-    current.y=+yI.value;
-    current.scale=+sI.value;
-    current.rotate=+rI.value;
-    current.float=+fI.value;
-    current.speed=+spI.value;
-  };
-});
+function setCurrent(layer){
+  current=layer;
+  renderLayerList();
+  updateInputsFromLayer();
+}
 
-/* ===== 正確タッチ（canvas直結） ===== */
+/* ===== UI ← 状態（表示のみ） ===== */
+function updateInputsFromLayer(){
+  if(!current) return;
+  xI.value=current.x;
+  yI.value=current.y;
+  sI.value=current.scale;
+  rI.value=current.rotate;
+  fI.value=current.float;
+  spI.value=current.speed;
+}
+
+/* ===== UI → 状態（安全） ===== */
+xI.oninput=()=>current && (current.x=+xI.value);
+yI.oninput=()=>current && (current.y=+yI.value);
+sI.oninput=()=>current && (current.scale=+sI.value);
+rI.oninput=()=>current && (current.rotate=+rI.value);
+fI.oninput=()=>current && (current.float=+fI.value);
+spI.oninput=()=>current && (current.speed=+spI.value);
+
+/* ===== タッチ操作 ===== */
 let pointers=new Map();
 let gesture=null;
 
@@ -167,8 +167,7 @@ canvas.addEventListener("pointerdown",e=>{
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointers.size===2 && current){
     const p=[...pointers.values()];
-    const dx=p[1].x-p[0].x;
-    const dy=p[1].y-p[0].y;
+    const dx=p[1].x-p[0].x, dy=p[1].y-p[0].y;
     gesture={
       dist:Math.hypot(dx,dy),
       angle:Math.atan2(dy,dx),
@@ -182,32 +181,25 @@ canvas.addEventListener("pointerup",e=>{
   pointers.delete(e.pointerId);
   if(pointers.size<2) gesture=null;
 });
-canvas.addEventListener("pointercancel",e=>{
-  pointers.delete(e.pointerId);
-  gesture=null;
-});
 
 canvas.addEventListener("pointermove",e=>{
   if(!current||!pointers.has(e.pointerId)) return;
   const prev=pointers.get(e.pointerId);
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-
   const rect=canvas.getBoundingClientRect();
 
   if(pointers.size===1){
     current.x+=(e.clientX-prev.x)*BASE_W/rect.width;
     current.y+=(e.clientY-prev.y)*BASE_H/rect.height;
+    updateInputsFromLayer();
   }
 
   if(pointers.size===2 && gesture){
     const p=[...pointers.values()];
-    const dx=p[1].x-p[0].x;
-    const dy=p[1].y-p[0].y;
-    const dist=Math.hypot(dx,dy);
-    const ang=Math.atan2(dy,dx);
-
-    current.scale=gesture.scale*(dist/gesture.dist);
-    current.rotate=gesture.rotate+(ang-gesture.angle)*180/Math.PI;
+    const dx=p[1].x-p[0].x, dy=p[1].y-p[0].y;
+    current.scale=gesture.scale*(Math.hypot(dx,dy)/gesture.dist);
+    current.rotate=gesture.rotate+(Math.atan2(dy,dx)-gesture.angle)*180/Math.PI;
+    updateInputsFromLayer();
   }
 });
 
@@ -215,10 +207,8 @@ canvas.addEventListener("pointermove",e=>{
 let start=performance.now();
 function draw(){
   const t=(performance.now()-start)/1000;
-  ctx.setTransform(ctx.getTransform()); // 念のため維持
   ctx.fillStyle="#555";
   ctx.fillRect(0,0,BASE_W,BASE_H);
-
   layers.slice().reverse().forEach(l=>{
     if(!l.img.complete) return;
     const fy=Math.sin(t*l.speed*SPEED_UNIT)*l.float*FLOAT_PX;
