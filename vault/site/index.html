@@ -1,1003 +1,237 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>My Local SNS — Mystic Purple</title>
-  <style>
-    :root{
-      --bg0:#070511;
-      --bg1:#120a2b;
-      --card: rgba(255,255,255,.06);
-      --card2: rgba(255,255,255,.09);
-      --line: rgba(255,255,255,.10);
-      --txt:#efe9ff;
-      --muted: rgba(239,233,255,.72);
-      --muted2: rgba(239,233,255,.55);
-      --a:#b98cff;
-      --a2:#7b5cff;
-      --hot:#ff67c7;
-      --ok:#66ffdd;
-      --shadow: 0 18px 60px rgba(0,0,0,.55);
-      --blur: blur(12px);
-      --r: 18px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Canvas Editor FINAL STABLE</title>
 
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
-      font-family: var(--sans);
-      color: var(--txt);
-      background:
-        radial-gradient(1000px 600px at 15% 10%, rgba(185,140,255,.25), transparent 55%),
-        radial-gradient(900px 600px at 80% 15%, rgba(255,103,199,.18), transparent 55%),
-        radial-gradient(900px 700px at 60% 95%, rgba(102,255,221,.10), transparent 60%),
-        linear-gradient(180deg, var(--bg0), var(--bg1));
-      overflow-x:hidden;
-    }
-
-    .wrap{
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 22px 16px 70px;
-    }
-
-    header{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .brand{
-      display:flex; flex-direction:column; gap:6px;
-    }
-    .brand h1{
-      margin:0;
-      font-size: 20px;
-      letter-spacing:.2px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .orb{
-      width: 16px; height: 16px;
-      border-radius:50%;
-      background: radial-gradient(circle at 30% 30%, #fff, rgba(255,255,255,.15) 28%, rgba(185,140,255,.95) 55%, rgba(123,92,255,.2) 72%, transparent 75%);
-      box-shadow: 0 0 18px rgba(185,140,255,.55), 0 0 28px rgba(255,103,199,.18);
-    }
-    .sub{
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.4;
-    }
-
-    .topActions{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-
-    .btn{
-      background: linear-gradient(180deg, rgba(185,140,255,.22), rgba(123,92,255,.12));
-      border: 1px solid rgba(185,140,255,.25);
-      color: var(--txt);
-      border-radius: 999px;
-      padding: 10px 12px;
-      cursor:pointer;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      transition: transform .06s ease, background .2s ease, border-color .2s ease;
-      user-select:none;
-      font-size: 13px;
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
-      white-space:nowrap;
-    }
-    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.22); }
-    .btn:active{ transform: translateY(0); }
-    .btn.secondary{
-      background: rgba(255,255,255,.06);
-      border-color: rgba(255,255,255,.12);
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns: 340px 1fr;
-      gap: 14px;
-    }
-    @media (max-width: 900px){
-      .grid{ grid-template-columns: 1fr; }
-    }
-
-    .card{
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: var(--r);
-      box-shadow: var(--shadow);
-      backdrop-filter: var(--blur);
-      overflow:hidden;
-    }
-    .card .hd{
-      padding: 14px 14px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-    }
-    .card .hd h2{
-      margin:0;
-      font-size: 14px;
-      letter-spacing:.2px;
-      color: rgba(239,233,255,.92);
-      display:flex; align-items:center; gap:8px;
-    }
-    .pill{
-      font-family: var(--mono);
-      font-size: 11px;
-      padding: 6px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.15);
-      color: rgba(239,233,255,.78);
-    }
-
-    .section{
-      padding: 14px;
-    }
-    label{
-      display:block;
-      font-size: 12px;
-      color: var(--muted);
-      margin: 10px 0 6px;
-    }
-    input[type="text"], textarea{
-      width:100%;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.20);
-      color: var(--txt);
-      outline:none;
-      font-size: 13px;
-    }
-    textarea{ min-height: 92px; resize: vertical; }
-    input[type="file"]{
-      width:100%;
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .row{
-      display:flex; gap:10px;
-    }
-    .row > *{ flex:1; }
-
-    .profileTop{
-      display:flex; gap: 12px; align-items:flex-start;
-    }
-    .avatar{
-      width:56px; height:56px; border-radius: 16px;
-      background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.15) 30%, rgba(185,140,255,.95) 62%, rgba(255,103,199,.22) 78%, rgba(0,0,0,.0) 80%),
-        linear-gradient(135deg, rgba(123,92,255,.2), rgba(0,0,0,0));
-      border: 1px solid rgba(255,255,255,.12);
-      box-shadow: 0 0 22px rgba(185,140,255,.35);
-    }
-    .profileMeta{
-      flex:1;
-    }
-    .nameLine{
-      display:flex;
-      align-items:center;
-      gap: 8px;
-      flex-wrap:wrap;
-    }
-    .nameLine .name{
-      font-weight: 700;
-      letter-spacing:.2px;
-    }
-    .nameLine .uid{
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .bio{
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .stats{
-      display:grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .stat{
-      background: rgba(0,0,0,.16);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 14px;
-      padding: 10px;
-      text-align:center;
-    }
-    .stat .n{
-      font-weight: 800;
-      letter-spacing:.2px;
-    }
-    .stat .t{
-      font-size: 11px;
-      color: var(--muted2);
-      margin-top: 4px;
-    }
-
-    .hint{
-      font-size: 11px;
-      color: var(--muted2);
-      line-height: 1.55;
-      margin-top: 10px;
-    }
-
-    /* feed */
-    .feed{
-      display:flex;
-      flex-direction:column;
-      gap: 10px;
-      padding: 14px;
-    }
-    .post{
-      background: var(--card2);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 18px;
-      padding: 12px 12px 10px;
-      box-shadow: 0 10px 35px rgba(0,0,0,.35);
-      overflow:hidden;
-      position:relative;
-    }
-    .post::before{
-      content:"";
-      position:absolute;
-      inset:-1px;
-      pointer-events:none;
-      background: radial-gradient(500px 140px at 10% 0%, rgba(185,140,255,.15), transparent 60%),
-                  radial-gradient(520px 160px at 90% 10%, rgba(255,103,199,.12), transparent 55%);
-      opacity:.9;
-    }
-    .post > *{ position:relative; }
-
-    .postHead{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-    .postUser{
-      display:flex; align-items:center; gap: 10px;
-      min-width: 0;
-    }
-    .miniAv{
-      width: 36px; height: 36px; border-radius: 14px;
-      background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,.85), rgba(255,255,255,.10) 28%, rgba(185,140,255,.9) 62%, rgba(0,0,0,0) 80%),
-        linear-gradient(135deg, rgba(123,92,255,.15), rgba(0,0,0,0));
-      border: 1px solid rgba(255,255,255,.10);
-      box-shadow: 0 0 16px rgba(185,140,255,.25);
-      flex: 0 0 auto;
-    }
-    .who{
-      min-width:0;
-    }
-    .who .line1{
-      display:flex; gap: 8px; align-items:baseline;
-      flex-wrap:wrap;
-    }
-    .who .line1 .n{
-      font-weight: 800;
-      font-size: 13px;
-    }
-    .who .line1 .u{
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .time{
-      font-family: var(--mono);
-      color: var(--muted2);
-      font-size: 11px;
-      white-space:nowrap;
-    }
-
-    .body{
-      white-space: pre-wrap;
-      line-height: 1.65;
-      font-size: 14px;
-      color: rgba(239,233,255,.94);
-    }
-
-    .media{
-      margin-top: 10px;
-      border-radius: 16px;
-      overflow:hidden;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.18);
-    }
-    .media img, .media video{
-      display:block;
-      width: 100%;
-      max-height: 420px;
-      object-fit: cover;
-    }
-
-    .react{
-      display:flex;
-      gap: 10px;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255,255,255,.08);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .rbtn{
-      display:inline-flex;
-      align-items:center;
-      gap: 7px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.14);
-      cursor:pointer;
-      user-select:none;
-      transition: transform .06s ease, border-color .2s ease;
-    }
-    .rbtn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.18); }
-    .rbtn:active{ transform: translateY(0); }
-    .rbtn .ic{ filter: drop-shadow(0 0 8px rgba(185,140,255,.22)); }
-    .rbtn .num{
-      font-family: var(--mono);
-      color: rgba(239,233,255,.85);
-      min-width: 3ch;
-      text-align:right;
-    }
-
-    .toast{
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,.45);
-      border: 1px solid rgba(255,255,255,.12);
-      color: rgba(239,233,255,.92);
-      padding: 10px 12px;
-      border-radius: 999px;
-      backdrop-filter: var(--blur);
-      box-shadow: 0 18px 50px rgba(0,0,0,.55);
-      font-size: 12px;
-      opacity: 0;
-      pointer-events:none;
-      transition: opacity .25s ease, transform .25s ease;
-    }
-    .toast.show{
-      opacity: 1;
-      transform: translateX(-50%) translateY(-2px);
-    }
-    .small{
-      font-size: 11px;
-      color: var(--muted2);
-    }
-    .danger{
-      color: rgba(255,180,215,.92);
-    }
-  </style>
+<style>
+body{
+  margin:0;
+  display:flex;
+  height:100vh;
+  background:#222;
+  color:#fff;
+  font-family:sans-serif;
+}
+#canvasWrap{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#000;
+}
+canvas{
+  background:#555;
+  touch-action:none;
+}
+#panel{
+  width:420px;
+  padding:10px;
+  background:#333;
+  overflow:auto;
+}
+.layer-item{
+  background:#444;
+  padding:4px;
+  margin-bottom:4px;
+  font-size:11px;
+  cursor:pointer;
+}
+.layer-item.active{ background:#666; }
+label{ font-size:12px; display:block; margin-top:6px; }
+input,button{ width:100%; }
+#logBox{
+  background:#111;
+  font-size:11px;
+  padding:6px;
+  white-space:pre-wrap;
+  max-height:200px;
+  overflow:auto;
+}
+</style>
 </head>
 
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <h1><span class="orb"></span> My Local SNS</h1>
-        <div class="sub">完全ローカル / 外部通信ゼロ / 「投稿した感」と「反応が来た感」だけを静かに補給する 💜</div>
-      </div>
-      <div class="topActions">
-        <button class="btn secondary" id="openTL">🜂 TLを別窓で開く</button>
-        <button class="btn" id="exportBtn">⟡ データ書き出し</button>
-        <button class="btn secondary" id="importBtn">⟡ データ読み込み</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none" />
-        <button class="btn secondary" id="wipeBtn">🗑️ 全消去</button>
-      </div>
-    </header>
 
-    <div class="grid">
-      <!-- left -->
-      <section class="card">
-        <div class="hd">
-          <h2>🜁 プロフィール</h2>
-          <span class="pill" id="localTag">file:// local</span>
-        </div>
-        <div class="section">
-          <div class="profileTop">
-            <div class="avatar" aria-hidden="true"></div>
-            <div class="profileMeta">
-              <div class="nameLine">
-                <div class="name" id="pNameView">あなた</div>
-                <div class="uid" id="pIdView">@you</div>
-              </div>
-              <div class="bio" id="pBioView">ここは安全な紫の部屋。外は見ない。ここだけで回復する。</div>
-            </div>
-          </div>
+<div id="canvasWrap">
+  <canvas id="canvas"></canvas>
+</div>
 
-          <div class="stats">
-            <div class="stat"><div class="n" id="stPosts">0</div><div class="t">posts</div></div>
-            <div class="stat"><div class="n" id="stFollows">12</div><div class="t">following</div></div>
-            <div class="stat"><div class="n" id="stFollowers">128</div><div class="t">followers</div></div>
-          </div>
+<div id="panel">
+  <label>画像追加 <input type="file" id="imgInput"></label>
 
-          <div class="hint">
-            ※数字は「現実」じゃなくて「体感」用。ここは創作回復装置。<br/>
-            ※このページには <b>リプ表示は一切ありません</b>（軽量化）。
-          </div>
+  <div id="layerList"></div>
 
-          <hr style="border:0;border-top:1px solid rgba(255,255,255,.08); margin:14px 0;">
+  <h3>数値調整（安全）</h3>
+  <label>X <input type="number" id="xI"></label>
+  <label>Y <input type="number" id="yI"></label>
+  <label>Scale <input type="number" step="0.01" id="sI"></label>
+  <label>Rotate <input type="number" id="rI"></label>
+  <label>Float（0〜10） <input type="number" min="0" max="10" id="fI"></label>
+  <label>Speed（1〜10） <input type="number" min="1" max="10" id="spI"></label>
 
-          <h3 style="margin:0 0 8px; font-size:13px; color:rgba(239,233,255,.92);">編集</h3>
-
-          <label>表示名</label>
-          <input type="text" id="pName" placeholder="例：あなた" />
-
-          <label>ユーザーID（@から）</label>
-          <input type="text" id="pId" placeholder="例：you" />
-
-          <label>自己紹介</label>
-          <textarea id="pBio" placeholder="ここは安全。創作のための紫の避難所。"></textarea>
-
-          <div class="row">
-            <div>
-              <label>フォロワー</label>
-              <input type="text" id="pFollowers" placeholder="例：128" />
-            </div>
-            <div>
-              <label>フォロー</label>
-              <input type="text" id="pFollowing" placeholder="例：12" />
-            </div>
-          </div>
-
-          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn" id="saveProfile">💾 保存</button>
-            <button class="btn secondary" id="seedCounts">✨ 反応を少しだけ増やす</button>
-          </div>
-          <div class="small" style="margin-top:10px;">
-            反応の“じわ伸び”は自動で発生します（完全ローカル）。あなたが押してもOK。
-          </div>
-        </div>
-      </section>
-
-      <!-- right -->
-      <section class="card">
-        <div class="hd">
-          <h2>🜃 投稿</h2>
-          <span class="pill" id="postCountPill">0 / 10</span>
-        </div>
-
-        <div class="section">
-          <label>本文</label>
-          <textarea id="postText" placeholder="…紫の部屋に投げる。外には出ない。"></textarea>
-
-          <label>画像/動画（任意）</label>
-          <input type="file" id="postMedia" accept="image/*,video/*" />
-
-          <div class="small" id="mediaNote" style="margin-top:8px;">
-            画像は容量が許す範囲で保存。動画は大きい場合「その場だけ」扱いになります（安全・軽量優先）。
-          </div>
-
-          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn" id="addPost">🜄 投稿する</button>
-            <button class="btn secondary" id="clearDraft">🫧 下書き消去</button>
-          </div>
-        </div>
-
-        <div class="hd" style="border-top:1px solid rgba(255,255,255,.08);">
-          <h2>🜏 あなたの投稿（最新10件）</h2>
-          <span class="pill">リプ表示なし</span>
-        </div>
-        <div class="feed" id="feed"></div>
-      </section>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
+  <button id="snapshotBtn">スナップショット保存</button>
+  <div id="logBox"></div>
+</div>
 
 <script>
-(() => {
-  // ---------- storage keys ----------
-  const K = {
-    profile: "mysticSNS_profile_v1",
-    posts: "mysticSNS_posts_v1",
-    draft: "mysticSNS_draft_v1",
-    bump: "mysticSNS_bump_v1"
+/* ===== 基本 ===== */
+const BASE_W=1280, BASE_H=720;
+const FLOAT_PX=4, SPEED_UNIT=0.8;
+
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const wrap=document.getElementById("canvasWrap");
+
+/* ===== resize ===== */
+function resize(){
+  const r=wrap.getBoundingClientRect();
+  const sc=Math.min(r.width/BASE_W,r.height/BASE_H);
+  canvas.width=BASE_W*sc;
+  canvas.height=BASE_H*sc;
+  ctx.setTransform(sc,0,0,sc,0,0);
+}
+window.addEventListener("resize",resize);
+resize();
+
+/* ===== 状態 ===== */
+let layers=[];
+let current=null;
+
+/* ===== UI参照 ===== */
+const listEl=document.getElementById("layerList");
+const xI=document.getElementById("xI");
+const yI=document.getElementById("yI");
+const sI=document.getElementById("sI");
+const rI=document.getElementById("rI");
+const fI=document.getElementById("fI");
+const spI=document.getElementById("spI");
+const logBox=document.getElementById("logBox");
+
+/* ===== 画像追加 ===== */
+imgInput.onchange=e=>{
+  const f=e.target.files[0];
+  const img=new Image();
+  img.onload=()=>{
+    const l={name:f.name,img,x:BASE_W/2,y:BASE_H/2,scale:1,rotate:0,float:0,speed:5};
+    layers.unshift(l);
+    setCurrent(l);
   };
+  img.src=URL.createObjectURL(f);
+};
 
-  const MAX_POSTS = 10;
-  const VIDEO_PERSIST_LIMIT = 2.0 * 1024 * 1024; // 2MB以下ならdataURL保存（それ以上は一時扱い推奨）
-  const IMG_PERSIST_LIMIT   = 1.7 * 1024 * 1024; // 画像も大きすぎるとlocalStorage圧迫するので軽く制限
+/* ===== レイヤーUI ===== */
+function renderLayerList(){
+  listEl.innerHTML="";
+  layers.forEach((l,i)=>{
+    const d=document.createElement("div");
+    d.className="layer-item"+(l===current?" active":"");
+    d.textContent=`${i+1} ${l.name}`;
+    d.onclick=()=>setCurrent(l);
+    listEl.appendChild(d);
+  });
+}
 
-  // ---------- utils ----------
-  const $ = (id) => document.getElementById(id);
-  const nowISO = () => new Date().toISOString();
-  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-  const randInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+function setCurrent(layer){
+  current=layer;
+  renderLayerList();
+  updateInputsFromLayer();
+}
 
-  function toast(msg, ms=1600){
-    const t = $("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    clearTimeout(toast._tm);
-    toast._tm = setTimeout(() => t.classList.remove("show"), ms);
-  }
+/* ===== UI ← 状態（表示のみ） ===== */
+function updateInputsFromLayer(){
+  if(!current) return;
+  xI.value=current.x;
+  yI.value=current.y;
+  sI.value=current.scale;
+  rI.value=current.rotate;
+  fI.value=current.float;
+  spI.value=current.speed;
+}
 
-  function loadJSON(key, fallback){
-    try{
-      const raw = localStorage.getItem(key);
-      if(!raw) return fallback;
-      return JSON.parse(raw);
-    }catch(e){ return fallback; }
-  }
-  function saveJSON(key, val){
-    localStorage.setItem(key, JSON.stringify(val));
-  }
+/* ===== UI → 状態（安全） ===== */
+xI.oninput=()=>current && (current.x=+xI.value);
+yI.oninput=()=>current && (current.y=+yI.value);
+sI.oninput=()=>current && (current.scale=+sI.value);
+rI.oninput=()=>current && (current.rotate=+rI.value);
+fI.oninput=()=>current && (current.float=+fI.value);
+spI.oninput=()=>current && (current.speed=+spI.value);
 
-  function safeNumberText(v, def){
-    const n = parseInt(String(v||"").replace(/[^\d]/g,""), 10);
-    return Number.isFinite(n) ? String(n) : String(def);
-  }
+/* ===== タッチ操作 ===== */
+let pointers=new Map();
+let gesture=null;
 
-  // ---------- profile ----------
-  const defaultProfile = {
-    name: "あなた",
-    id: "you",
-    bio: "ここは安全な紫の部屋。外は見ない。ここだけで回復する。",
-    followers: "128",
-    following: "12"
-  };
-
-  function getProfile(){
-    return { ...defaultProfile, ...loadJSON(K.profile, {}) };
-  }
-  function setProfile(p){
-    saveJSON(K.profile, p);
-  }
-
-  function renderProfile(){
-    const p = getProfile();
-    $("pNameView").textContent = p.name || defaultProfile.name;
-    $("pIdView").textContent = "@" + (p.id || defaultProfile.id);
-    $("pBioView").textContent = p.bio || defaultProfile.bio;
-
-    $("pName").value = p.name || "";
-    $("pId").value = p.id || "";
-    $("pBio").value = p.bio || "";
-    $("pFollowers").value = safeNumberText(p.followers, 128);
-    $("pFollowing").value = safeNumberText(p.following, 12);
-
-    $("stFollowers").textContent = safeNumberText(p.followers, 128);
-    $("stFollows").textContent = safeNumberText(p.following, 12);
-
-    const posts = getPosts();
-    $("stPosts").textContent = String(posts.length);
-  }
-
-  // ---------- posts ----------
-  function getPosts(){
-    return loadJSON(K.posts, []);
-  }
-  function setPosts(posts){
-    saveJSON(K.posts, posts);
-  }
-
-  function fmtTime(iso){
-    const d = new Date(iso);
-    const pad = (n)=>String(n).padStart(2,"0");
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  function computeDefaultReacts(){
-    // 投稿直後の「初期の気配」
-    const base = randInt(0, 6);
-    return {
-      like: base + randInt(0, 3),
-      repost: randInt(0, 2),
-      reply: randInt(0, 3) // 表示はするが本文リプは無し
+canvas.addEventListener("pointerdown",e=>{
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===2 && current){
+    const p=[...pointers.values()];
+    const dx=p[1].x-p[0].x, dy=p[1].y-p[0].y;
+    gesture={
+      dist:Math.hypot(dx,dy),
+      angle:Math.atan2(dy,dx),
+      scale:current.scale,
+      rotate:current.rotate
     };
   }
+});
 
-  function updatePill(){
-    const n = getPosts().length;
-    $("postCountPill").textContent = `${n} / ${MAX_POSTS}`;
-    $("stPosts").textContent = String(n);
+canvas.addEventListener("pointerup",e=>{
+  pointers.delete(e.pointerId);
+  if(pointers.size<2) gesture=null;
+});
+
+canvas.addEventListener("pointermove",e=>{
+  if(!current||!pointers.has(e.pointerId)) return;
+  const prev=pointers.get(e.pointerId);
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const rect=canvas.getBoundingClientRect();
+
+  if(pointers.size===1){
+    current.x+=(e.clientX-prev.x)*BASE_W/rect.width;
+    current.y+=(e.clientY-prev.y)*BASE_H/rect.height;
+    updateInputsFromLayer();
   }
 
-  function makePostEl(post, profile){
-    const el = document.createElement("article");
-    el.className = "post";
-    el.dataset.id = post.id;
-
-    el.innerHTML = `
-      <div class="postHead">
-        <div class="postUser">
-          <div class="miniAv" aria-hidden="true"></div>
-          <div class="who">
-            <div class="line1">
-              <span class="n"></span>
-              <span class="u"></span>
-            </div>
-            <div class="time"></div>
-          </div>
-        </div>
-        <div class="time"></div>
-      </div>
-
-      <div class="body"></div>
-
-      <div class="media" style="display:none"></div>
-
-      <div class="react">
-        <div class="rbtn" data-act="like" title="いいね">
-          <span class="ic">❤️</span><span class="num" data-num="like">0</span>
-        </div>
-        <div class="rbtn" data-act="repost" title="リポスト">
-          <span class="ic">🔁</span><span class="num" data-num="repost">0</span>
-        </div>
-        <div class="rbtn" data-act="reply" title="返信（本文は表示しません）">
-          <span class="ic">💬</span><span class="num" data-num="reply">0</span>
-        </div>
-        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-          <span class="pill" style="padding:6px 10px;">ID: <span style="font-family:var(--mono)">${post.id.slice(-6)}</span></span>
-        </div>
-      </div>
-    `;
-
-    const name = profile?.name || "あなた";
-    const uid = "@" + (profile?.id || "you");
-    el.querySelector(".who .n").textContent = name;
-    el.querySelector(".who .u").textContent = uid;
-    el.querySelectorAll(".time").forEach(t => t.textContent = fmtTime(post.time));
-    el.querySelector(".body").textContent = post.text || "";
-
-    const media = el.querySelector(".media");
-    if(post.media && post.media.type && post.media.src){
-      media.style.display = "block";
-      if(post.media.type.startsWith("image/")){
-        const img = document.createElement("img");
-        img.src = post.media.src;
-        img.alt = "image";
-        media.appendChild(img);
-      } else if(post.media.type.startsWith("video/")){
-        const v = document.createElement("video");
-        v.src = post.media.src;
-        v.controls = true;
-        v.playsInline = true;
-        media.appendChild(v);
-      }
-    }
-
-    // reaction counts
-    const likeN = el.querySelector('[data-num="like"]');
-    const repN  = el.querySelector('[data-num="repost"]');
-    const rplN  = el.querySelector('[data-num="reply"]');
-    likeN.textContent = String(post.react?.like ?? 0);
-    repN.textContent  = String(post.react?.repost ?? 0);
-    rplN.textContent  = String(post.react?.reply ?? 0);
-
-    // manual bump (also persists)
-    el.querySelectorAll(".rbtn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const act = btn.dataset.act;
-        bumpReact(post.id, act, 1);
-        const updated = getPosts().find(p => p.id === post.id);
-        if(updated){
-          likeN.textContent = String(updated.react.like);
-          repN.textContent  = String(updated.react.repost);
-          rplN.textContent  = String(updated.react.reply);
-        }
-      });
-    });
-
-    return el;
+  if(pointers.size===2 && gesture){
+    const p=[...pointers.values()];
+    const dx=p[1].x-p[0].x, dy=p[1].y-p[0].y;
+    current.scale=gesture.scale*(Math.hypot(dx,dy)/gesture.dist);
+    current.rotate=gesture.rotate+(Math.atan2(dy,dx)-gesture.angle)*180/Math.PI;
+    updateInputsFromLayer();
   }
+});
 
-  function renderFeed(){
-    const feed = $("feed");
-    feed.innerHTML = "";
-    const p = getProfile();
-    const posts = getPosts()
-      .slice()
-      .sort((a,b)=> (b.time||"").localeCompare(a.time||"")); // 最新上
-
-    posts.forEach(post => feed.appendChild(makePostEl(post, p)));
-    updatePill();
-  }
-
-  // ---------- reaction "slow growth" ----------
-  // idea: periodically choose a few posts and increment counts slightly. Persist to localStorage.
-  function bumpReact(postId, act, amount){
-    const posts = getPosts();
-    const idx = posts.findIndex(p => p.id === postId);
-    if(idx < 0) return;
-
-    const p = posts[idx];
-    p.react = p.react || { like:0, repost:0, reply:0 };
-    if(!(act in p.react)) return;
-
-    p.react[act] = clamp((p.react[act]||0) + amount, 0, 999999);
-    posts[idx] = p;
-    setPosts(posts);
-  }
-
-  function autoBumpTick(){
-    const posts = getPosts();
-    if(!posts.length) return;
-
-    // pick 1〜3 posts to bump
-    const k = randInt(1, Math.min(3, posts.length));
-    for(let i=0;i<k;i++){
-      const target = posts[randInt(0, posts.length-1)];
-      if(!target) continue;
-
-      // probabilities tuned to "じわ〜"
-      const roll = Math.random();
-      if(roll < 0.62){
-        bumpReact(target.id, "like", randInt(1,2));
-      } else if(roll < 0.84){
-        bumpReact(target.id, "reply", randInt(0,1)); // 0もある＝増えない時もある
-      } else {
-        bumpReact(target.id, "repost", 1);
-      }
-    }
-
-    // update visible numbers only (cheap)
-    document.querySelectorAll(".post").forEach(el => {
-      const id = el.dataset.id;
-      const p = getPosts().find(x => x.id === id);
-      if(!p) return;
-      el.querySelector('[data-num="like"]').textContent   = String(p.react.like);
-      el.querySelector('[data-num="repost"]').textContent = String(p.react.repost);
-      el.querySelector('[data-num="reply"]').textContent  = String(p.react.reply);
-    });
-  }
-
-  function startAutoBump(){
-    // random-ish interval 3s〜12s
-    const run = () => {
-      autoBumpTick();
-      const next = randInt(3000, 12000);
-      setTimeout(run, next);
-    };
-    setTimeout(run, randInt(1800, 4200));
-  }
-
-  // ---------- draft ----------
-  function loadDraft(){
-    const d = loadJSON(K.draft, { text:"" });
-    $("postText").value = d.text || "";
-  }
-  function saveDraft(){
-    saveJSON(K.draft, { text: $("postText").value || "" });
-  }
-
-  // ---------- media handling ----------
-  function readFileAsDataURL(file){
-    return new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
-      fr.onerror = () => reject(fr.error);
-      fr.readAsDataURL(file);
-    });
-  }
-
-  // ---------- actions ----------
-  $("saveProfile").addEventListener("click", () => {
-    const p = {
-      name: ($("pName").value || "あなた").trim(),
-      id: ($("pId").value || "you").trim().replace(/^@/,""),
-      bio: ($("pBio").value || "").trim(),
-      followers: safeNumberText($("pFollowers").value, 128),
-      following: safeNumberText($("pFollowing").value, 12),
-    };
-    setProfile(p);
-    renderProfile();
-    renderFeed();
-    toast("プロフィールを保存しました 💾");
+/* ===== 描画 ===== */
+let start=performance.now();
+function draw(){
+  const t=(performance.now()-start)/1000;
+  ctx.fillStyle="#555";
+  ctx.fillRect(0,0,BASE_W,BASE_H);
+  layers.slice().reverse().forEach(l=>{
+    if(!l.img.complete) return;
+    const fy=Math.sin(t*l.speed*SPEED_UNIT)*l.float*FLOAT_PX;
+    ctx.save();
+    ctx.translate(l.x,l.y+fy);
+    ctx.rotate(l.rotate*Math.PI/180);
+    ctx.scale(l.scale,l.scale);
+    ctx.drawImage(l.img,-l.img.width/2,-l.img.height/2);
+    ctx.restore();
   });
+  requestAnimationFrame(draw);
+}
+draw();
 
-  $("seedCounts").addEventListener("click", () => {
-    const posts = getPosts();
-    if(!posts.length){ toast("投稿がまだありません"); return; }
-    const n = randInt(1, Math.min(3, posts.length));
-    for(let i=0;i<n;i++){
-      const t = posts[randInt(0, posts.length-1)];
-      bumpReact(t.id, "like", randInt(2,6));
-      if(Math.random()<.3) bumpReact(t.id, "repost", 1);
-      if(Math.random()<.5) bumpReact(t.id, "reply", randInt(1,2));
-    }
-    renderFeed();
-    toast("…どこかで誰かが見てた気配 ✨");
+/* ===== ログ ===== */
+snapshotBtn.onclick=()=>{
+  let txt="SNAPSHOT\n";
+  layers.forEach((l,i)=>{
+    txt+=`${i+1} ${l.name} x:${l.x} y:${l.y} s:${l.scale} r:${l.rotate} f:${l.float} sp:${l.speed}\n`;
   });
-
-  $("clearDraft").addEventListener("click", () => {
-    $("postText").value = "";
-    $("postMedia").value = "";
-    saveDraft();
-    toast("下書きを消しました 🫧");
-  });
-
-  $("postText").addEventListener("input", () => saveDraft());
-
-  $("addPost").addEventListener("click", async () => {
-    const text = ($("postText").value || "").trim();
-    const file = $("postMedia").files?.[0] || null;
-
-    if(!text && !file){
-      toast("本文かメディアを入れてね");
-      return;
-    }
-
-    const id = "p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
-    const post = {
-      id,
-      time: nowISO(),
-      text,
-      react: computeDefaultReacts(),
-      media: null
-    };
-
-    // media
-    if(file){
-      const isImg = file.type.startsWith("image/");
-      const isVid = file.type.startsWith("video/");
-      const size = file.size || 0;
-
-      try{
-        if(isImg){
-          if(size > IMG_PERSIST_LIMIT){
-            toast("画像が大きめです。軽量化のため縮小推奨（ただし今回はそのまま試します）", 2200);
-          }
-          const src = await readFileAsDataURL(file);
-          post.media = { type: file.type, src, persisted: true, name: file.name, size };
-        } else if(isVid){
-          if(size <= VIDEO_PERSIST_LIMIT){
-            const src = await readFileAsDataURL(file);
-            post.media = { type: file.type, src, persisted: true, name: file.name, size };
-          } else {
-            // session-only via object URL (not storable safely)
-            const url = URL.createObjectURL(file);
-            post.media = { type: file.type, src: url, persisted: false, name: file.name, size };
-            $("mediaNote").innerHTML = `<span class="danger">⚠️ 動画が大きいので「その場だけ」扱い（リロードで消える可能性）。</span>`;
-          }
-        } else {
-          toast("対応してない形式です（画像/動画のみ）");
-        }
-      } catch(e){
-        toast("メディア読み込みに失敗しました");
-      }
-    }
-
-    // store
-    const posts = getPosts();
-    posts.push(post);
-
-    // if over 10, drop oldest
-    posts.sort((a,b)=> (a.time||"").localeCompare(b.time||""));
-    while(posts.length > MAX_POSTS){
-      const gone = posts.shift();
-      // revoke object URL if needed
-      if(gone?.media && gone.media.type?.startsWith("video/") && gone.media.persisted === false){
-        try{ URL.revokeObjectURL(gone.media.src); }catch(e){}
-      }
-    }
-
-    // attempt save; if localStorage quota blows, fallback: drop media and save again
-    try{
-      setPosts(posts);
-    } catch(e){
-      // degrade: strip persisted media dataURLs
-      const degraded = posts.map(p => {
-        if(p.media && p.media.persisted === true){
-          return { ...p, media: null, _note: "media_stripped_quota" };
-        }
-        return p;
-      });
-      try{
-        setPosts(degraded);
-        toast("容量の都合でメディアを外して保存しました（本文は残っています）", 2400);
-      } catch(e2){
-        toast("保存容量が足りませんでした。不要データを消してください。", 2400);
-        return;
-      }
-    }
-
-    // reset input
-    $("postText").value = "";
-    $("postMedia").value = "";
-    saveDraft();
-    renderProfile();
-    renderFeed();
-    toast("投稿しました 🜄");
-  });
-
-  // ---------- export / import / wipe ----------
-  $("exportBtn").addEventListener("click", () => {
-    const payload = {
-      version: 1,
-      exportedAt: nowISO(),
-      profile: getProfile(),
-      posts: getPosts()
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "mysticSNS_backup.json";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast("バックアップを書き出しました ⟡");
-  });
-
-  $("importBtn").addEventListener("click", () => $("importFile").click());
-  $("importFile").addEventListener("change", async (ev) => {
-    const f = ev.target.files?.[0];
-    if(!f) return;
-    try{
-      const txt = await f.text();
-      const data = JSON.parse(txt);
-      if(!data || typeof data !== "object") throw new Error("bad");
-
-      if(data.profile) setProfile({ ...defaultProfile, ...data.profile });
-      if(Array.isArray(data.posts)){
-        // keep only latest 10
-        const posts = data.posts.slice().sort((a,b)=> (a.time||"").localeCompare(b.time||"")).slice(-MAX_POSTS);
-        setPosts(posts);
-      }
-      renderProfile();
-      renderFeed();
-      toast("読み込みました ⟡");
-    } catch(e){
-      toast("読み込みに失敗しました");
-    } finally {
-      ev.target.value = "";
-    }
-  });
-
-  $("wipeBtn").addEventListener("click", () => {
-    const ok = confirm("本当に全消去しますか？（完全ローカルのデータが消えます）");
-    if(!ok) return;
-    localStorage.removeItem(K.profile);
-    localStorage.removeItem(K.posts);
-    localStorage.removeItem(K.draft);
-    renderProfile();
-    renderFeed();
-    loadDraft();
-    toast("全消去しました");
-  });
-
-  // open TL
-  $("openTL").addEventListener("click", () => {
-    // same folder に index_tl.html がある想定
-    const url = location.href.replace(/index\.html?$/i, "index_tl.html");
-    window.open(url, "mysticTL", "width=520,height=820");
-  });
-
-  // ---------- init ----------
-  renderProfile();
-  renderFeed();
-  loadDraft();
-  startAutoBump();
-})();
+  logBox.prepend(Object.assign(document.createElement("div"),{textContent:txt}));
+};
 </script>
+
 </body>
 </html>
