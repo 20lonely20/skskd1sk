@@ -3,67 +3,66 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
-  <title>Landscape Rhythm Prototype</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Rhythm Prototype (5 lanes)</title>
   <style>
     :root{
-      --bg:#0b1020;
-      --panel:#121a33;
-      --accent:#5eead4;
-      --danger:#fb7185;
-      --text:#e5e7eb;
-      --muted:#9ca3af;
-      --lane:#1f2a52;
-      --judge:#a78bfa;
+      --bg:#0b1020; --panel:#121a33; --text:#e5e7eb; --muted:#9ca3af;
+      --accent:#5eead4; --judge:#a78bfa; --danger:#fb7185;
     }
     html,body{ height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; }
+    body{ overscroll-behavior: none; }
+    *{ -webkit-tap-highlight-color: transparent; }
     .wrap{ height:100%; display:flex; flex-direction:column; }
     header{
-      display:flex; gap:12px; align-items:center; padding:10px 12px;
+      display:flex; gap:10px; align-items:center; padding:10px 12px;
       background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
       border-bottom:1px solid rgba(255,255,255,0.08);
+      user-select:none;
     }
-    header .title{ font-weight:700; letter-spacing:0.2px; }
+    header .title{ font-weight:800; }
     header .pill{
       padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.06);
       border:1px solid rgba(255,255,255,0.10); color:var(--muted); font-size:12px;
     }
     header button{
-      background:var(--accent); border:0; color:#041014; font-weight:700;
+      background:var(--accent); border:0; color:#041014; font-weight:800;
       padding:8px 12px; border-radius:10px; cursor:pointer;
     }
     header button.secondary{
-      background:rgba(255,255,255,0.08); color:var(--text); border:1px solid rgba(255,255,255,0.12);
-      font-weight:600;
+      background:rgba(255,255,255,0.08); color:var(--text);
+      border:1px solid rgba(255,255,255,0.12); font-weight:700;
     }
     header input[type="file"]{ display:none; }
     header label.filebtn{
       display:inline-flex; align-items:center; gap:8px; cursor:pointer;
       padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.08);
-      border:1px solid rgba(255,255,255,0.12); color:var(--text); font-weight:600;
+      border:1px solid rgba(255,255,255,0.12); color:var(--text); font-weight:700;
     }
-    main{ flex:1; display:grid; grid-template-columns: 1fr 320px; gap:12px; padding:12px; }
+
+    main{ flex:1; display:grid; grid-template-columns: 1fr 360px; gap:12px; padding:12px; }
     .stage{
       position:relative; border-radius:18px; overflow:hidden;
-      background: radial-gradient(1200px 600px at 50% 0%, rgba(94,234,212,0.18), transparent 50%),
+      background: radial-gradient(1200px 600px at 50% 0%, rgba(94,234,212,0.18), transparent 55%),
                   linear-gradient(180deg, rgba(18,26,51,1), rgba(11,16,32,1));
       border:1px solid rgba(255,255,255,0.10);
+      touch-action:none; /* iOS/Android: prevent scroll/zoom gestures as much as allowed */
     }
     canvas{ width:100%; height:100%; display:block; }
-    .hud{
-      position:absolute; inset:0; pointer-events:none;
-    }
+    .hud{ position:absolute; inset:0; pointer-events:none; }
     .hud .top{
       position:absolute; left:12px; top:12px; display:flex; gap:10px; align-items:center;
       padding:8px 10px; border-radius:12px; background:rgba(0,0,0,0.28); border:1px solid rgba(255,255,255,0.10);
       font-size:13px;
     }
-    .hud .top .score{ font-weight:800; color:var(--accent); }
-    .hud .top .combo{ font-weight:800; color:var(--judge); }
+    .hud .top .score{ font-weight:900; color:var(--accent); }
+    .hud .top .combo{ font-weight:900; color:var(--judge); }
     .hud .msg{
-      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      position:absolute; left:50%; top:48%; transform:translate(-50%,-50%);
       padding:10px 14px; border-radius:14px; background:rgba(0,0,0,0.38);
       border:1px solid rgba(255,255,255,0.10);
-      font-weight:800; letter-spacing:0.4px; opacity:0; transition:opacity 120ms linear;
+      font-weight:900; letter-spacing:0.4px; opacity:0; transition:opacity 120ms linear;
     }
     .hud .msg.show{ opacity:1; }
 
@@ -72,6 +71,7 @@
       border:1px solid rgba(255,255,255,0.10);
       padding:12px;
       display:flex; flex-direction:column; gap:12px;
+      user-select:none;
     }
     .card{
       border-radius:16px; background:rgba(0,0,0,0.22);
@@ -83,42 +83,49 @@
     .row label{ font-size:12px; color:var(--muted); }
     .row output{ font-variant-numeric:tabular-nums; color:var(--text); font-size:12px; }
     input[type="range"]{ width:100%; }
-    .hint{ color:var(--muted); font-size:12px; line-height:1.4; }
-    .kbd{
+    textarea{
+      width:100%; min-height:180px; resize:vertical;
+      background:rgba(255,255,255,0.06); color:var(--text);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:12px; padding:10px;
       font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      padding:2px 6px; border-radius:8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.10);
-      color:var(--text); font-size:12px;
+      font-size:12px; line-height:1.35;
     }
+    .hint{ color:var(--muted); font-size:12px; line-height:1.4; }
     .warn{ color:#fca5a5; }
-    @media (max-width: 900px){
-      main{ grid-template-columns: 1fr; }
+    .mini{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
     }
+    .mini button{ padding:7px 10px; border-radius:10px; }
+    @media (max-width: 980px){ main{ grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="title">Landscape Rhythm Prototype</div>
-    <div class="pill">音声時刻基準 / 4レーン / 判定つき</div>
+    <div class="title">Rhythm Prototype</div>
+    <div class="pill">5 lanes ⭕ / 💖 notes / audio-time judge</div>
+
     <button id="btnStart">Start</button>
     <button id="btnPlay" class="secondary" disabled>Play</button>
     <button id="btnPause" class="secondary" disabled>Pause</button>
     <button id="btnRestart" class="secondary" disabled>Restart</button>
 
-    <label class="filebtn" for="fileAudio">音源を読み込む</label>
+    <label class="filebtn" for="fileAudio">曲をアップロード</label>
     <input id="fileAudio" type="file" accept="audio/*" />
 
-    <div style="margin-left:auto" class="pill">タップ：下の判定ライン / キー：<span class="kbd">D F J K</span></div>
+    <div style="margin-left:auto" class="pill">曲長：<span id="dur">--分--秒</span></div>
   </header>
 
   <main>
-    <div class="stage">
+    <div class="stage" id="stage">
       <canvas id="cv"></canvas>
       <div class="hud">
         <div class="top">
           <div>Score <span class="score" id="score">0</span></div>
           <div>Combo <span class="combo" id="combo">0</span></div>
           <div>t <span id="t" style="font-variant-numeric:tabular-nums;">0.000</span></div>
+          <div style="color:var(--muted)">mode <span id="mode">PLAY</span></div>
         </div>
         <div class="msg" id="msg">PERFECT</div>
       </div>
@@ -126,35 +133,41 @@
 
     <div class="side">
       <div class="card">
-        <h3>判定 / オフセット（重要）</h3>
+        <h3>判定・音ズレ調整</h3>
         <div class="row"><label>入力オフセット（ms）</label><output id="outOffset">0</output></div>
-        <input id="rngOffset" type="range" min="-120" max="120" step="1" value="0" />
+        <input id="rngOffset" type="range" min="-180" max="180" step="1" value="0" />
         <div class="row"><label>ノーツ速度（px/s）</label><output id="outSpeed">1200</output></div>
-        <input id="rngSpeed" type="range" min="600" max="2400" step="10" value="1200" />
-        <div class="row"><label>判定幅（ms）</label><output id="outWindow">35 / 80 / 120</output></div>
+        <input id="rngSpeed" type="range" min="700" max="2600" step="10" value="1200" />
+        <div class="row"><label>PERFECT幅（ms）</label><output id="outWindow">35 / 90</output></div>
         <input id="rngWindow" type="range" min="20" max="60" step="1" value="35" />
         <p class="hint">
-          音ズレ対策の基本：描画ではなく <b>audioContext.currentTime</b> を基準にノーツ位置と判定を計算します。<br/>
-          端末差は「入力オフセット」で吸収します（キャリブレーションUIの土台）。
+          判定は描画ではなく <b>audioContext.currentTime</b> 基準。端末差は「入力オフセット」で吸収します。
         </p>
       </div>
 
       <div class="card">
-        <h3>譜面（仮）</h3>
+        <h3>譜面編集（追加・削除）</h3>
+        <div class="mini">
+          <button id="btnToggleEdit" class="secondary">編集: OFF</button>
+          <button id="btnClearChart" class="secondary">譜面クリア</button>
+          <button id="btnExport" class="secondary">譜面Export</button>
+          <button id="btnImport" class="secondary">譜面Import</button>
+        </div>
         <p class="hint">
-          いまはデモ譜面（BPM 160相当の等間隔＋ランダム）です。<br/>
-          次の段階で、あなたの譜面フォーマット（JSON等）を読み込みできるようにします。
+          編集ON：タップすると <b>その時刻にノーツ追加</b>。既存ノーツの近くをタップすると <b>削除</b>。<br/>
+          Export/Import はJSON（コピー貼り付け）で、ローカル保存（localStorage）もします。
         </p>
+      </div>
+
+      <div class="card">
+        <h3>タップログ（数値記録）</h3>
+        <div class="mini">
+          <button id="btnClearLog" class="secondary">ログクリア</button>
+          <button id="btnCopyLog" class="secondary">ログコピー</button>
+        </div>
+        <textarea id="log" spellcheck="false" readonly></textarea>
         <p class="hint warn">
-          iOS Safari は出音開始の制約が強いです。必ず Start を押してから再生してください。
-        </p>
-      </div>
-
-      <div class="card">
-        <h3>キャラ（仮）</h3>
-        <p class="hint">
-          いまは丸い「ミニキャラ」がビートに合わせて左右にうろうろします。<br/>
-          立ち絵PNG差し替えはすぐ可能です（スプライト/揺れ/瞬きなども）。
+          iPhoneの端スワイプはWebから完全無効化不可。UIは端から離しています。可能なら「ホーム画面に追加」で安定します。
         </p>
       </div>
     </div>
@@ -163,150 +176,33 @@
 
 <script>
 (() => {
-  // ========== Audio (timing source) ==========
-  let ac = null;
-  let master = null;
-  let seGain = null;
+  // --------- iOS gesture prevention (best-effort) ----------
+  document.addEventListener('gesturestart', e => e.preventDefault(), { passive:false });
+  document.addEventListener('touchmove', e => e.preventDefault(), { passive:false }); // prevents scroll (best effort)
+  document.addEventListener('contextmenu', e => e.preventDefault());
 
-  // loaded song buffer
+  // --------- Audio (timing source) ----------
+  let ac = null;
+  let master = null, seGain = null;
   let songBuf = null;
   let songSrc = null;
-
-  // playback state
   let playing = false;
-  let startAt = 0;        // ac.currentTime when song started
-  let pausedAt = 0;       // seconds into song when paused
+  let startAt = 0;     // ac.currentTime when song started (minus offset)
+  let pausedAt = 0;    // seconds into song when paused
 
-  // ========== Game params ==========
-  const lanes = 4;
-  let pxPerSec = 1200;
-  let inputOffsetMs = 0;
-  let perfectMs = 35, greatMs = 80, goodMs = 120;
-
-  // visuals
-  const cv = document.getElementById('cv');
-  const ctx = cv.getContext('2d', { alpha: false });
-  const hudMsg = document.getElementById('msg');
-  const elScore = document.getElementById('score');
-  const elCombo = document.getElementById('combo');
-  const elT = document.getElementById('t');
-
-  let W = 0, H = 0, DPR = 1;
-
-  // judge line
-  let judgeY = 0;
-
-  // scoring
-  let score = 0;
-  let combo = 0;
-
-  // notes: {t: seconds, lane: 0..3, hit:false}
-  let chart = [];
-
-  // input queue per lane for simple anti-double
-  const lanePressed = new Array(lanes).fill(false);
-
-  // ========== UI ==========
-  const btnStart = document.getElementById('btnStart');
-  const btnPlay = document.getElementById('btnPlay');
-  const btnPause = document.getElementById('btnPause');
-  const btnRestart = document.getElementById('btnRestart');
-  const fileAudio = document.getElementById('fileAudio');
-
-  const rngOffset = document.getElementById('rngOffset');
-  const outOffset = document.getElementById('outOffset');
-  const rngSpeed = document.getElementById('rngSpeed');
-  const outSpeed = document.getElementById('outSpeed');
-  const rngWindow = document.getElementById('rngWindow');
-  const outWindow = document.getElementById('outWindow');
-
-  function setMsg(text, color){
-    hudMsg.textContent = text;
-    hudMsg.style.color = color;
-    hudMsg.classList.add('show');
-    clearTimeout(setMsg._t);
-    setMsg._t = setTimeout(() => hudMsg.classList.remove('show'), 120);
-  }
-
-  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
-
-  function resize(){
-    DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-    const rect = cv.getBoundingClientRect();
-    W = Math.floor(rect.width * DPR);
-    H = Math.floor(rect.height * DPR);
-    cv.width = W; cv.height = H;
-    judgeY = Math.floor(H * 0.78);
-  }
-
-  window.addEventListener('resize', resize, { passive:true });
-
-  // ========== Create demo chart ==========
-  function makeDemoChart(){
-    // 45 seconds, "BPM 160" 1/2 notes + occasional bursts
-    const bpm = 160;
-    const beat = 60 / bpm; // seconds
-    const start = 1.5;
-    const end = 45.0;
-    const notes = [];
-    let t = start;
-    while(t < end){
-      // base: every 1/2 beat
-      const lane = (Math.random()*lanes)|0;
-      notes.push({ t, lane, hit:false });
-
-      // occasional extra
-      if (Math.random() < 0.18){
-        const lane2 = (lane + 1 + ((Math.random()*3)|0)) % lanes;
-        notes.push({ t: t + beat*0.25, lane: lane2, hit:false });
-      }
-      t += beat * 0.5;
-    }
-    notes.sort((a,b)=>a.t-b.t);
-    return notes;
-  }
-
-  // ========== Audio helpers ==========
   async function initAudio(){
     if (ac) return;
-    ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-    master = ac.createGain();
-    master.gain.value = 0.9;
-
-    seGain = ac.createGain();
-    seGain.gain.value = 0.7;
-
-    master.connect(ac.destination);
+    ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint:'interactive' });
+    master = ac.createGain(); master.gain.value = 0.9;
+    seGain = ac.createGain(); seGain.gain.value = 0.7;
     seGain.connect(master);
-
-    // create a tiny click SE with oscillator (no file needed)
-  }
-
-  function playClick(freq=880, dur=0.03){
-    if (!ac) return;
-    const t0 = ac.currentTime;
-    const o = ac.createOscillator();
-    const g = ac.createGain();
-    o.type = 'square';
-    o.frequency.setValueAtTime(freq, t0);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g);
-    g.connect(seGain);
-    o.start(t0);
-    o.stop(t0 + dur + 0.01);
-  }
-
-  async function decodeFileToBuffer(file){
-    const arr = await file.arrayBuffer();
-    return await ac.decodeAudioData(arr);
+    master.connect(ac.destination);
   }
 
   function stopSong(){
     if (songSrc){
-      try{ songSrc.stop(); }catch(e){}
-      songSrc.disconnect();
+      try{ songSrc.stop(); }catch(_){}
+      try{ songSrc.disconnect(); }catch(_){}
       songSrc = null;
     }
     playing = false;
@@ -319,21 +215,19 @@
   }
 
   function startSongFrom(offsetSec){
-    if (!songBuf) return;
+    if (!songBuf || !ac) return;
     stopSong();
     songSrc = ac.createBufferSource();
     songSrc.buffer = songBuf;
     songSrc.connect(master);
 
-    // schedule start
-    const t0 = ac.currentTime + 0.02; // small safety
+    const t0 = ac.currentTime + 0.02;
     startAt = t0 - offsetSec;
     pausedAt = offsetSec;
     songSrc.start(t0, offsetSec);
     playing = true;
 
     songSrc.onended = () => {
-      // if it ended naturally
       if (playing){
         playing = false;
         pausedAt = 0;
@@ -343,195 +237,102 @@
     };
   }
 
-  // ========== Judgement ==========
-  function judgeLane(lane){
+  function playClick(freq=880, dur=0.03){
     if (!ac) return;
-    const now = currentSongTime();
-    const inputAdj = now + (inputOffsetMs / 1000);
-
-    // find nearest unhit note in that lane within window
-    let bestIdx = -1;
-    let bestAbs = 999;
-    for (let i=0;i<chart.length;i++){
-      const n = chart[i];
-      if (n.hit || n.lane !== lane) continue;
-      const dt = (inputAdj - n.t) * 1000; // ms
-      const adt = Math.abs(dt);
-      if (adt < bestAbs){
-        bestAbs = adt;
-        bestIdx = i;
-      }
-      // small optimization: chart sorted by t; if we're far past, can break
-      if (n.t > inputAdj + 0.25) break;
-    }
-
-    if (bestIdx === -1 || bestAbs > goodMs){
-      combo = 0;
-      elCombo.textContent = combo;
-      setMsg('MISS', 'var(--danger)');
-      playClick(220, 0.035);
-      return;
-    }
-
-    const n = chart[bestIdx];
-    n.hit = true;
-
-    if (bestAbs <= perfectMs){
-      score += 1000;
-      combo += 1;
-      setMsg('PERFECT', 'var(--accent)');
-      playClick(1046, 0.02);
-    }else if (bestAbs <= greatMs){
-      score += 700;
-      combo += 1;
-      setMsg('GREAT', '#93c5fd');
-      playClick(880, 0.02);
-    }else{
-      score += 400;
-      combo = 0;
-      setMsg('GOOD', '#fde68a');
-      playClick(659, 0.03);
-    }
-    elScore.textContent = score;
-    elCombo.textContent = combo;
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type='square';
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(seGain);
+    o.start(t0); o.stop(t0 + dur + 0.01);
   }
 
-  // ========== Miss handling (late notes) ==========
-  function updateMisses(songT){
-    // if note is too late past window, mark miss
-    const missAfter = (goodMs / 1000);
-    for (let i=0;i<chart.length;i++){
-      const n = chart[i];
-      if (n.hit) continue;
-      if (songT - n.t > missAfter){
-        n.hit = true;
-        combo = 0;
-        elCombo.textContent = combo;
-        // don't spam MISS messages too hard
-      } else {
-        // because sorted by t, if this isn't late, later ones won't be either
-        // but only if n.t is not far behind; still safe:
-        if (n.t > songT) break;
-      }
-    }
+  async function decodeFileToBuffer(file){
+    const arr = await file.arrayBuffer();
+    return await ac.decodeAudioData(arr);
   }
 
-  // ========== Rendering ==========
-  function draw(){
-    requestAnimationFrame(draw);
-    resizeIfNeeded();
+  // --------- UI ----------
+  const cv = document.getElementById('cv');
+  const stage = document.getElementById('stage');
+  const ctx = cv.getContext('2d', { alpha:false });
 
-    const t = currentSongTime();
-    elT.textContent = t.toFixed(3);
+  const btnStart = document.getElementById('btnStart');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnPause = document.getElementById('btnPause');
+  const btnRestart = document.getElementById('btnRestart');
+  const fileAudio = document.getElementById('fileAudio');
 
-    // background
-    ctx.fillStyle = '#070a14';
-    ctx.fillRect(0,0,W,H);
+  const elDur = document.getElementById('dur');
+  const elScore = document.getElementById('score');
+  const elCombo = document.getElementById('combo');
+  const elT = document.getElementById('t');
+  const elMode = document.getElementById('mode');
+  const hudMsg = document.getElementById('msg');
 
-    // stage gradient overlay
-    const g = ctx.createLinearGradient(0,0,0,H);
-    g.addColorStop(0,'rgba(94,234,212,0.10)');
-    g.addColorStop(0.7,'rgba(0,0,0,0)');
-    g.addColorStop(1,'rgba(0,0,0,0.35)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,W,H);
+  const rngOffset = document.getElementById('rngOffset');
+  const outOffset = document.getElementById('outOffset');
+  const rngSpeed = document.getElementById('rngSpeed');
+  const outSpeed = document.getElementById('outSpeed');
+  const rngWindow = document.getElementById('rngWindow');
+  const outWindow = document.getElementById('outWindow');
 
-    // lanes geometry
-    const pad = Math.floor(W*0.06);
-    const laneW = Math.floor((W - pad*2) / lanes);
-    const laneH = Math.floor(H*0.72);
-    const laneTop = Math.floor(H*0.16);
+  const btnToggleEdit = document.getElementById('btnToggleEdit');
+  const btnClearChart = document.getElementById('btnClearChart');
+  const btnExport = document.getElementById('btnExport');
+  const btnImport = document.getElementById('btnImport');
 
-    // draw lanes
-    for(let i=0;i<lanes;i++){
-      const x = pad + i*laneW;
-      ctx.fillStyle = 'rgba(31,42,82,0.75)';
-      ctx.fillRect(x+laneW*0.08, laneTop, laneW*0.84, laneH);
-      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-      ctx.lineWidth = Math.max(1, DPR);
-      ctx.strokeRect(x+laneW*0.08, laneTop, laneW*0.84, laneH);
-    }
+  const logEl = document.getElementById('log');
+  const btnClearLog = document.getElementById('btnClearLog');
+  const btnCopyLog = document.getElementById('btnCopyLog');
 
-    // judge line
-    ctx.strokeStyle = 'rgba(167,139,250,0.9)';
-    ctx.lineWidth = Math.max(2, DPR*2);
-    ctx.beginPath();
-    ctx.moveTo(pad, judgeY);
-    ctx.lineTo(W-pad, judgeY);
-    ctx.stroke();
-
-    // input areas (visual)
-    ctx.fillStyle = 'rgba(167,139,250,0.10)';
-    ctx.fillRect(pad, judgeY, W-pad*2, Math.floor(H*0.10));
-
-    // notes
-    const travelPxPerSec = pxPerSec * DPR;
-    const noteR = Math.floor(Math.min(laneW, H)*0.035);
-    ctx.save();
-    for (let i=0;i<chart.length;i++){
-      const n = chart[i];
-      if (n.hit) continue;
-
-      // position based on AUDIO TIME
-      const dt = (n.t - t); // seconds until hit time
-      // note y: judgeY - dt*speed
-      const y = judgeY - dt*travelPxPerSec;
-      if (y < laneTop-80*DPR) continue;
-      if (y > judgeY + 120*DPR) continue;
-
-      const xCenter = pad + n.lane*laneW + laneW*0.5;
-      ctx.fillStyle = 'rgba(94,234,212,0.95)';
-      ctx.beginPath();
-      ctx.arc(xCenter, y, noteR, 0, Math.PI*2);
-      ctx.fill();
-
-      // glow
-      ctx.strokeStyle = 'rgba(94,234,212,0.35)';
-      ctx.lineWidth = Math.max(2, DPR*2);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // mini character (simple blob) near bottom, moves with "beat"
-    drawMiniChar(t, pad, laneW, laneTop, laneH);
-
-    // miss check
-    if (playing) updateMisses(t);
-
-    // pause overlay
-    if (!playing && (pausedAt > 0 || score > 0)){
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fillRect(0,0,W,H);
-      ctx.fillStyle = 'rgba(229,231,235,0.92)';
-      ctx.font = `${Math.floor(20*DPR)}px system-ui`;
-      ctx.fillText('PAUSED', Math.floor(W*0.46), Math.floor(H*0.52));
-    }
+  function setMsg(text, color){
+    hudMsg.textContent = text;
+    hudMsg.style.color = color;
+    hudMsg.classList.add('show');
+    clearTimeout(setMsg._t);
+    setMsg._t = setTimeout(() => hudMsg.classList.remove('show'), 140);
   }
 
-  function drawMiniChar(t, pad, laneW, laneTop, laneH){
-    // beat-ish wobble: use 2Hz as placeholder (later: use BPM map or onset detection)
-    const wob = Math.sin(t * Math.PI * 2 * 2.0); // -1..1
-    const x = pad + (lanes*laneW)*0.5 + wob*(laneW*0.9);
-    const y = laneTop + laneH + 12*DPR + Math.sin(t*6.2)*4*DPR;
-
-    // shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(x, y+16*DPR, 18*DPR, 7*DPR, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    // body
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.beginPath();
-    ctx.arc(x, y, 16*DPR, 0, Math.PI*2);
-    ctx.fill();
-
-    // accent
-    ctx.fillStyle = 'rgba(94,234,212,0.9)';
-    ctx.beginPath();
-    ctx.arc(x+6*DPR, y-6*DPR, 5*DPR, 0, Math.PI*2);
-    ctx.fill();
+  function fmtDur(sec){
+    const s = Math.max(0, Math.floor(sec));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}分${String(r).padStart(2,'0')}秒`;
   }
+
+  function appendLog(line){
+    logEl.value += line + "\n";
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // --------- Game params ----------
+  const lanes = 5;
+  let pxPerSec = 1200;
+  let inputOffsetMs = 0;
+  let perfectMs = 35;
+  let goodMs = 90; // auto derived
+  function updateWindows(){
+    goodMs = perfectMs + 55;
+    outWindow.textContent = `${perfectMs} / ${goodMs}`;
+  }
+
+  // geometry
+  let W=0,H=0,DPR=1;
+  let judgeY=0;
+  function resize(){
+    DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const rect = cv.getBoundingClientRect();
+    W = Math.floor(rect.width * DPR);
+    H = Math.floor(rect.height * DPR);
+    cv.width=W; cv.height=H;
+    judgeY = Math.floor(H * 0.78);
+  }
+  window.addEventListener('resize', resize, { passive:true });
 
   function resizeIfNeeded(){
     const rect = cv.getBoundingClientRect();
@@ -540,74 +341,308 @@
     if (cv.width !== needW || cv.height !== needH) resize();
   }
 
-  // ========== Input ==========
-  function laneFromX(clientX){
-    const rect = cv.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const padCss = rect.width * 0.06;
-    const laneWCss = (rect.width - padCss*2) / lanes;
-    const idx = Math.floor((x - padCss) / laneWCss);
-    return clamp(idx, 0, lanes-1);
+  // scoring
+  let score=0, combo=0;
+
+  // chart: {t:number, lane:0..4, hit:boolean}
+  let chart = [];
+  const STORAGE_KEY = "rhythm_chart_v1";
+
+  function loadChart(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const data = JSON.parse(raw);
+      if (!Array.isArray(data)) return [];
+      return data
+        .filter(x => typeof x.t==="number" && typeof x.lane==="number")
+        .map(x => ({ t:x.t, lane:clampInt(x.lane,0,lanes-1), hit:false }))
+        .sort((a,b)=>a.t-b.t);
+    }catch(_){ return []; }
+  }
+  function saveChart(){
+    const data = chart
+      .filter(n => typeof n.t==="number" && typeof n.lane==="number")
+      .map(n => ({ t:+n.t.toFixed(5), lane:n.lane }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
 
-  function isInHitZone(clientY){
+  function clampInt(v,min,max){ v=v|0; return Math.max(min, Math.min(max, v)); }
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  // demo chart if none
+  function makeDemoChart(){
+    const bpm = 160;
+    const beat = 60/bpm;
+    const notes=[];
+    let t=1.5;
+    for(let i=0;i<220;i++){
+      notes.push({ t, lane:(Math.random()*lanes)|0, hit:false });
+      if (Math.random()<0.15) notes.push({ t:t+beat*0.25, lane:(Math.random()*lanes)|0, hit:false });
+      t += beat*0.5;
+    }
+    notes.sort((a,b)=>a.t-b.t);
+    return notes;
+  }
+
+  // mode
+  let editMode = false;
+  function setMode(on){
+    editMode = on;
+    btnToggleEdit.textContent = on ? "編集: ON" : "編集: OFF";
+    btnToggleEdit.style.background = on ? "rgba(167,139,250,0.30)" : "";
+    elMode.textContent = on ? "EDIT" : "PLAY";
+  }
+
+  // --------- Judge logic ----------
+  function findNearestNote(lane, tAdj, maxMs){
+    // chart sorted; scan a window
+    let bestIdx=-1, bestAbs=1e9;
+    const maxSec = maxMs/1000;
+    for (let i=0;i<chart.length;i++){
+      const n=chart[i];
+      if (n.hit || n.lane!==lane) continue;
+      const dt = tAdj - n.t; // seconds
+      const adt = Math.abs(dt);
+      if (adt < bestAbs){
+        bestAbs = adt; bestIdx = i;
+      }
+      if (n.t > tAdj + maxSec + 0.25) break;
+    }
+    if (bestIdx<0) return null;
+    return { idx:bestIdx, absMs:bestAbs*1000, deltaMs:(tAdj - chart[bestIdx].t)*1000 };
+  }
+
+  function judgeLaneTap(lane){
+    if (!ac) return;
+    const now = currentSongTime();
+    const tAdj = now + (inputOffsetMs/1000);
+
+    const hit = findNearestNote(lane, tAdj, goodMs);
+    if (!hit){
+      combo=0; elCombo.textContent=combo;
+      setMsg("MISS","var(--danger)");
+      playClick(220,0.035);
+      appendLog(`tap t=${now.toFixed(4)} lane=${lane} -> MISS (no note)`);
+      return;
+    }
+
+    const {idx, absMs, deltaMs} = hit;
+    chart[idx].hit = true;
+
+    let res="GOOD", add=400;
+    if (absMs <= perfectMs){ res="PERFECT"; add=1000; combo+=1; setMsg("PERFECT","var(--accent)"); playClick(1046,0.02); }
+    else { res="GOOD"; combo=0; setMsg("GOOD","#fde68a"); playClick(659,0.03); }
+
+    score += add;
+    elScore.textContent = score;
+    elCombo.textContent = combo;
+
+    appendLog(`tap t=${now.toFixed(4)} lane=${lane} -> ${res} | deltaMs=${deltaMs.toFixed(1)} | absMs=${absMs.toFixed(1)}`);
+  }
+
+  function updateMisses(songT){
+    const missAfter = goodMs/1000;
+    for (let i=0;i<chart.length;i++){
+      const n=chart[i];
+      if (n.hit) continue;
+      if (songT - n.t > missAfter){
+        n.hit = true;
+        combo=0; elCombo.textContent=combo;
+      }else{
+        if (n.t > songT) break;
+      }
+    }
+  }
+
+  // --------- Editor: add/remove notes by tap ----------
+  function editorTap(lane, now){
+    const tAdj = now + (inputOffsetMs/1000);
+
+    // if near an existing note in that lane within 120ms -> delete it
+    const near = findNearestNote(lane, tAdj, 120);
+    if (near && near.absMs <= 120){
+      const removed = chart.splice(near.idx,1)[0];
+      saveChart();
+      setMsg("DELETE","var(--danger)");
+      appendLog(`edit delete t=${removed.t.toFixed(4)} lane=${lane}`);
+      return;
+    }
+
+    // else add note at this time
+    chart.push({ t:tAdj, lane, hit:false });
+    chart.sort((a,b)=>a.t-b.t);
+    saveChart();
+    setMsg("ADD","var(--judge)");
+    appendLog(`edit add t=${tAdj.toFixed(4)} lane=${lane}`);
+  }
+
+  // --------- Rendering (⭕ targets + 💖 notes) ----------
+  function drawHeart(x,y,size){
+    // simple heart path (canvas), size in px
+    const s = size;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.scale(s, s);
+    ctx.beginPath();
+    ctx.moveTo(0, 0.3);
+    ctx.bezierCurveTo(0, -0.1, -0.5, -0.1, -0.5, 0.25);
+    ctx.bezierCurveTo(-0.5, 0.55, -0.15, 0.75, 0, 0.9);
+    ctx.bezierCurveTo(0.15, 0.75, 0.5, 0.55, 0.5, 0.25);
+    ctx.bezierCurveTo(0.5, -0.1, 0, -0.1, 0, 0.3);
+    ctx.closePath();
+    ctx.restore();
+  }
+
+  function render(){
+    requestAnimationFrame(render);
+    resizeIfNeeded();
+
+    const t = currentSongTime();
+    elT.textContent = t.toFixed(3);
+
+    ctx.fillStyle = "#070a14";
+    ctx.fillRect(0,0,W,H);
+
+    // lane geometry (keep away from edges)
+    const pad = Math.floor(W*0.08);
+    const laneW = Math.floor((W - pad*2) / lanes);
+    const laneTop = Math.floor(H*0.16);
+    const laneH = Math.floor(H*0.72);
+
+    // lanes
+    for(let i=0;i<lanes;i++){
+      const x = pad + i*laneW;
+      ctx.fillStyle = "rgba(31,42,82,0.75)";
+      ctx.fillRect(x+laneW*0.10, laneTop, laneW*0.80, laneH);
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = Math.max(1, DPR);
+      ctx.strokeRect(x+laneW*0.10, laneTop, laneW*0.80, laneH);
+    }
+
+    // judge line
+    ctx.strokeStyle = "rgba(167,139,250,0.95)";
+    ctx.lineWidth = Math.max(2, DPR*2);
+    ctx.beginPath();
+    ctx.moveTo(pad, judgeY);
+    ctx.lineTo(W-pad, judgeY);
+    ctx.stroke();
+
+    // ⭕ targets (5 circles)
+    const targetR = Math.floor(Math.min(laneW,H)*0.050);
+    for(let i=0;i<lanes;i++){
+      const cx = pad + i*laneW + laneW*0.5;
+      const cy = judgeY;
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.beginPath(); ctx.arc(cx, cy, targetR, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = "rgba(229,231,235,0.80)";
+      ctx.lineWidth = Math.max(2, DPR*2);
+      ctx.beginPath(); ctx.arc(cx, cy, targetR, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // notes 💖
+    const travel = pxPerSec * DPR;
+    const heartSize = Math.floor(Math.min(laneW,H)*0.040);
+    for (let i=0;i<chart.length;i++){
+      const n=chart[i];
+      if (n.hit) continue;
+      const dt = (n.t - t); // sec to hit
+      const y = judgeY - dt*travel;
+      if (y < laneTop-120*DPR) continue;
+      if (y > judgeY+140*DPR) continue;
+      const x = pad + n.lane*laneW + laneW*0.5;
+
+      // glow
+      ctx.save();
+      ctx.shadowColor = "rgba(94,234,212,0.45)";
+      ctx.shadowBlur = 14*DPR;
+      ctx.fillStyle = "rgba(94,234,212,0.92)";
+      drawHeart(x,y,heartSize);
+      ctx.fill();
+      ctx.restore();
+
+      // outline
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.lineWidth = Math.max(1, DPR);
+      drawHeart(x,y,heartSize);
+      ctx.stroke();
+    }
+
+    if (playing) updateMisses(t);
+
+    // subtle edit overlay
+    if (editMode){
+      ctx.fillStyle = "rgba(167,139,250,0.10)";
+      ctx.fillRect(0,0,W,H);
+    }
+  }
+
+  // --------- Pointer input ----------
+  function laneFromClientX(clientX){
+    const rect = cv.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const padCss = rect.width * 0.08;
+    const laneWCss = (rect.width - padCss*2) / lanes;
+    const idx = Math.floor((x - padCss) / laneWCss);
+    return clampInt(idx,0,lanes-1);
+  }
+  function inHitZone(clientY){
     const rect = cv.getBoundingClientRect();
     const y = clientY - rect.top;
     const judgeYCss = rect.height * 0.78;
-    return y >= judgeYCss - rect.height*0.04;
+    // allow tapping in a band around judge line (not the entire screen)
+    return y >= (judgeYCss - rect.height*0.08) && y <= (judgeYCss + rect.height*0.16);
   }
 
-  cv.addEventListener('pointerdown', (e) => {
-    if (!ac) return;
-    if (ac.state !== 'running') ac.resume();
-    if (!isInHitZone(e.clientY)) return;
-    const lane = laneFromX(e.clientX);
-    judgeLane(lane);
+  cv.addEventListener('pointerdown', async (e) => {
     e.preventDefault();
+    if (!ac) return;
+
+    if (ac.state !== 'running') await ac.resume();
+
+    // only accept taps near targets (⭕ band) to reduce edge swipes
+    if (!inHitZone(e.clientY)) return;
+
+    const lane = laneFromClientX(e.clientX);
+    const now = currentSongTime();
+
+    if (editMode){
+      editorTap(lane, now);
+      return;
+    }
+    judgeLaneTap(lane);
   }, { passive:false });
 
-  window.addEventListener('keydown', (e) => {
-    const map = { 'd':0, 'f':1, 'j':2, 'k':3 };
-    const k = e.key.toLowerCase();
-    if (k in map){
-      if (lanePressed[map[k]]) return;
-      lanePressed[map[k]] = true;
-      judgeLane(map[k]);
-      e.preventDefault();
-    }
-  });
+  // --------- Controls ----------
+  function resetRunState(){
+    score=0; combo=0;
+    elScore.textContent=score;
+    elCombo.textContent=combo;
+    chart.forEach(n => n.hit=false);
+  }
 
-  window.addEventListener('keyup', (e) => {
-    const map = { 'd':0, 'f':1, 'j':2, 'k':3 };
-    const k = e.key.toLowerCase();
-    if (k in map){
-      lanePressed[map[k]] = false;
-      e.preventDefault();
-    }
-  });
-
-  // ========== Controls ==========
   btnStart.addEventListener('click', async () => {
     await initAudio();
     if (ac.state !== 'running') await ac.resume();
 
-    // default song: simple generated tone loop if no file loaded
-    if (!songBuf){
-      songBuf = makeFallbackSongBuffer();
-    }
+    // load chart from storage or demo
+    chart = loadChart();
+    if (chart.length === 0) chart = makeDemoChart(), saveChart();
 
-    chart = makeDemoChart();
-    score = 0; combo = 0;
-    elScore.textContent = score;
-    elCombo.textContent = combo;
-
+    resetRunState();
     btnPlay.disabled = false;
     btnPause.disabled = true;
     btnRestart.disabled = false;
+
+    // if no song loaded yet, create fallback (so duration shows)
+    if (!songBuf){
+      songBuf = makeFallbackSongBuffer();
+      elDur.textContent = fmtDur(songBuf.duration);
+    }
   });
 
   btnPlay.addEventListener('click', async () => {
-    if (!ac) return;
+    if (!ac || !songBuf) return;
     if (ac.state !== 'running') await ac.resume();
     startSongFrom(pausedAt);
     btnPlay.disabled = true;
@@ -615,8 +650,7 @@
   });
 
   btnPause.addEventListener('click', () => {
-    if (!ac) return;
-    if (!playing) return;
+    if (!ac || !playing) return;
     pausedAt = currentSongTime();
     stopSong();
     btnPlay.disabled = false;
@@ -627,10 +661,7 @@
     if (!ac) return;
     stopSong();
     pausedAt = 0;
-    chart.forEach(n => n.hit = false);
-    score = 0; combo = 0;
-    elScore.textContent = score;
-    elCombo.textContent = combo;
+    resetRunState();
     btnPlay.disabled = false;
     btnPause.disabled = true;
   });
@@ -643,41 +674,102 @@
 
     stopSong();
     pausedAt = 0;
-    songBuf = await decodeFileToBuffer(file);
 
-    chart = makeDemoChart();
-    score = 0; combo = 0;
-    elScore.textContent = score;
-    elCombo.textContent = combo;
+    songBuf = await decodeFileToBuffer(file);
+    elDur.textContent = fmtDur(songBuf.duration);
+
+    // keep chart, just reset
+    if (chart.length === 0){
+      chart = loadChart();
+      if (chart.length === 0) chart = makeDemoChart(), saveChart();
+    }
+    resetRunState();
 
     btnPlay.disabled = false;
     btnPause.disabled = true;
     btnRestart.disabled = false;
+
+    appendLog(`audio loaded duration=${songBuf.duration.toFixed(3)}s (${fmtDur(songBuf.duration)})`);
   });
 
   rngOffset.addEventListener('input', () => {
-    inputOffsetMs = parseInt(rngOffset.value, 10);
+    inputOffsetMs = parseInt(rngOffset.value,10);
     outOffset.textContent = inputOffsetMs;
   });
   rngSpeed.addEventListener('input', () => {
-    pxPerSec = parseInt(rngSpeed.value, 10);
+    pxPerSec = parseInt(rngSpeed.value,10);
     outSpeed.textContent = pxPerSec;
   });
   rngWindow.addEventListener('input', () => {
-    perfectMs = parseInt(rngWindow.value, 10);
-    greatMs = perfectMs + 45;
-    goodMs = perfectMs + 85;
-    outWindow.textContent = `${perfectMs} / ${greatMs} / ${goodMs}`;
+    perfectMs = parseInt(rngWindow.value,10);
+    updateWindows();
   });
 
-  // init display values
   outOffset.textContent = inputOffsetMs;
   outSpeed.textContent = pxPerSec;
-  outWindow.textContent = `${perfectMs} / ${greatMs} / ${goodMs}`;
+  updateWindows();
 
-  // ========== Fallback song buffer (simple metronome-ish synth) ==========
+  btnToggleEdit.addEventListener('click', () => setMode(!editMode));
+
+  btnClearChart.addEventListener('click', () => {
+    chart = [];
+    saveChart();
+    resetRunState();
+    appendLog("chart cleared");
+    setMsg("CLEARED","var(--danger)");
+  });
+
+  btnExport.addEventListener('click', async () => {
+    const data = chart.map(n => ({ t:+n.t.toFixed(5), lane:n.lane })).sort((a,b)=>a.t-b.t);
+    const txt = JSON.stringify({ version:1, lanes, notes:data }, null, 2);
+    // copy to clipboard if possible
+    try{
+      await navigator.clipboard.writeText(txt);
+      setMsg("COPIED","var(--accent)");
+    }catch(_){
+      setMsg("EXPORT","var(--judge)");
+    }
+    appendLog(`export notes=${data.length}`);
+    // also show in prompt for manual copy
+    alert("譜面JSONをコピーしました（失敗した場合はこの後表示されるテキストを手動コピー）");
+    // fallback: prompt shows text
+    prompt("譜面JSON（コピーして保存）", txt);
+  });
+
+  btnImport.addEventListener('click', () => {
+    const raw = prompt("譜面JSONを貼り付けてOK（{version,lanes,notes}）");
+    if (!raw) return;
+    try{
+      const obj = JSON.parse(raw);
+      const notes = obj?.notes;
+      if (!Array.isArray(notes)) throw new Error("notes missing");
+      chart = notes
+        .filter(x => typeof x.t==="number" && typeof x.lane==="number")
+        .map(x => ({ t:x.t, lane:clampInt(x.lane,0,lanes-1), hit:false }))
+        .sort((a,b)=>a.t-b.t);
+      saveChart();
+      resetRunState();
+      setMsg("IMPORTED","var(--accent)");
+      appendLog(`import notes=${chart.length}`);
+    }catch(err){
+      setMsg("ERROR","var(--danger)");
+      appendLog(`import error: ${String(err)}`);
+      alert("JSONの形式が違います。");
+    }
+  });
+
+  btnClearLog.addEventListener('click', () => { logEl.value=""; });
+  btnCopyLog.addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(logEl.value);
+      setMsg("COPIED","var(--accent)");
+    }catch(_){
+      setMsg("COPY FAIL","var(--danger)");
+    }
+  });
+
+  // --------- Fallback song (so it works without file) ----------
   function makeFallbackSongBuffer(){
-    // 50 seconds of simple tone + click every beat (offline render)
     const sr = (ac && ac.sampleRate) ? ac.sampleRate : 48000;
     const dur = 50;
     const len = sr * dur;
@@ -688,27 +780,29 @@
     const beat = sr * (60 / bpm);
     let phase = 0;
     const baseFreq = 110;
+
     for (let i=0;i<len;i++){
-      const t = i / sr;
-      // tone bed
+      const t = i/sr;
       const f = baseFreq * (1 + 0.02*Math.sin(t*2.0));
       phase += (2*Math.PI*f)/sr;
-      let s = 0.04 * Math.sin(phase);
+      let s = 0.04*Math.sin(phase);
 
-      // beat click (short noise)
       const bi = i % Math.floor(beat);
       if (bi < sr*0.008){
-        const env = 1 - (bi / (sr*0.008));
-        s += (Math.random()*2-1) * 0.10 * env;
+        const env = 1 - (bi/(sr*0.008));
+        s += (Math.random()*2-1)*0.10*env;
       }
-      ch[i] = s;
+      ch[i]=s;
     }
     return buf;
   }
 
-  // start render loop
+  // --------- Boot ----------
   resize();
-  requestAnimationFrame(draw);
+  chart = loadChart();
+  if (chart.length === 0) chart = makeDemoChart(), saveChart();
+  setMode(false);
+  requestAnimationFrame(render);
 })();
 </script>
 </body>
