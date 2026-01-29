@@ -1,1 +1,334 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>立ち絵＋ゆらゆら（①〜⑤）保存</title>
+  <style>
+    :root{--bg:#0f1220;--p:#171b2f;--p2:#1f2440;--t:#e8ebff;--m:#aab0d6;--a:#7dd3fc;--g:#86efac;--w:#fbbf24;--b:#fb7185;}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--t);}
+    .wrap{display:grid;grid-template-columns:380px 1fr 360px;gap:12px;padding:12px;height:100vh;box-sizing:border-box;}
+    .panel{background:var(--p);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;overflow:auto;}
+    h2{font-size:14px;margin:0 0 10px;color:var(--m);font-weight:900;}
+    .hint{color:var(--m);font-size:12px;line-height:1.6;}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+    .btn{background:var(--p2);color:var(--t);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 10px;cursor:pointer;font-weight:900;}
+    .btn.primary{background:rgba(125,211,252,.18);border-color:rgba(125,211,252,.45);}
+    .btn.good{background:rgba(134,239,172,.14);border-color:rgba(134,239,172,.45);}
+    .btn.warn{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.45);}
+    .btn.bad{background:rgba(251,113,133,.14);border-color:rgba(251,113,133,.45);}
+    .btn:disabled{opacity:.45;cursor:not-allowed;}
+    .pill{display:inline-block;font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--m);}
+    input[type="file"], input[type="text"]{width:100%;box-sizing:border-box;}
+    input[type="text"]{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:10px;color:var(--t);padding:10px;font-weight:800;}
+    canvas{width:100%;height:100%;background:radial-gradient(circle at 30% 20%, rgba(125,211,252,.07), transparent 45%);border-radius:12px;border:1px solid rgba(255,255,255,.08);}
+    .center{display:grid;grid-template-rows:auto 1fr auto;gap:10px;height:100%;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;}
+    .presetGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+    .preset{padding:10px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);cursor:pointer;font-weight:950;text-align:center;}
+    .preset.active{outline:2px solid rgba(125,211,252,.55);background:rgba(125,211,252,.10);}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LEFT -->
+  <div class="panel">
+    <h2>① 立ち絵をアップロード</h2>
+    <input id="file" type="file" accept="image/png,image/webp,image/jpeg" />
+    <div class="hint" style="margin-top:8px;">
+      ・2500×2500まで<br/>
+      ・透明部分を自動で除外して、描画されている範囲だけ使います
+    </div>
+
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08); margin:12px 0;">
+
+    <h2>② ゆらゆら（①〜⑤）</h2>
+    <div class="hint">①完全静止 → ⑤活発</div>
+    <div class="presetGrid" id="presetGrid" style="margin-top:10px;"></div>
+
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08); margin:12px 0;">
+
+    <h2>③ 名前をつけて保存</h2>
+    <input id="name" type="text" placeholder="例：推しA_冬服" maxlength="40" />
+    <div class="row" style="margin-top:8px;">
+      <button class="btn good" id="saveBtn" disabled>名前をつけて保存（ファイル作成）</button>
+      <button class="btn bad" id="resetBtn" disabled>画像を外す</button>
+    </div>
+    <div class="hint" style="margin-top:8px;">
+      保存すると「立ち絵＋モーション」が1つのファイルになります。<br/>
+      あとでゲーム側の「立ち絵カスタム」でこのファイルをアップロードして使えます。
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="panel">
+    <div class="center">
+      <div class="row" style="justify-content:space-between;">
+        <div class="row">
+          <span class="pill">プレビュー</span>
+          <span class="pill mono">1000×2000</span>
+        </div>
+        <span class="pill" id="status">画像未読み込み</span>
+      </div>
+
+      <canvas id="cv" width="1000" height="2000"></canvas>
+
+      <div class="hint">
+        画面がゆらゆら動くのはプレビューです。保存ファイルには「画像＋ゆらゆら番号」が入ります。
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel">
+    <h2>いまの設定</h2>
+    <div class="pill mono" id="info">—</div>
+
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08); margin:12px 0;">
+
+    <h2>ゲーム側での使い方（最低限）</h2>
+    <div class="hint">
+      1) ゲーム画面 → 設定 → 立ち絵カスタム<br/>
+      2) 「立ち絵＋モーション」ファイルをアップロード<br/>
+      3) 以後、削除/変更しない限りその立ち絵で遊べます
+    </div>
+  </div>
+</div>
+
+<script>
+const CANVAS_W=1000, CANVAS_H=2000;
+
+// 保存ファイル形式（json）
+/*
+{
+  "format":"CHAR_CUSTOM_1",
+  "name":"推しA_冬服",
+  "motionLevel": 1..5,
+  "image": { "dataUrl":"data:image/png;base64,...", "crop":{sx,sy,sw,sh} }
+}
+*/
+
+const cv=document.getElementById("cv");
+const ctx=cv.getContext("2d");
+
+const file=document.getElementById("file");
+const presetGrid=document.getElementById("presetGrid");
+const nameInput=document.getElementById("name");
+const saveBtn=document.getElementById("saveBtn");
+const resetBtn=document.getElementById("resetBtn");
+const statusEl=document.getElementById("status");
+const infoEl=document.getElementById("info");
+
+let cropped=null; // {canvas,sx,sy,sw,sh}
+let dataUrl=null;
+let motionLevel=1;
+
+let t=0, lastTs=null;
+
+// ①静止〜⑤活発：全体ゆらゆらのみ
+function levelParams(lv){
+  const k=(lv-1)/4; // 0..1
+  return {
+    period: 6.0 - 2.2*k,  // 6.0s → 3.8s
+    swayX:  0.0 + 7.0*k,  // px
+    bobY:   0.0 + 8.0*k,  // px
+    rot:    0.00+ 1.60*k  // deg
+  };
+}
+
+// プリセットボタン
+for(let i=1;i<=5;i++){
+  const d=document.createElement("div");
+  d.className="preset"+(i===motionLevel?" active":"");
+  d.textContent=`0${i}`;
+  d.addEventListener("click", ()=>{
+    motionLevel=i;
+    [...presetGrid.children].forEach(el=>el.classList.remove("active"));
+    d.classList.add("active");
+    syncUI();
+  });
+  presetGrid.appendChild(d);
+}
+
+file.addEventListener("change", async (e)=>{
+  const f=e.target.files?.[0];
+  if(!f) return;
+
+  const url=URL.createObjectURL(f);
+  const temp=new Image();
+  temp.onload=async ()=>{
+    if(temp.width>2500 || temp.height>2500){
+      alert("画像が大きすぎます（2500×2500まで）");
+      URL.revokeObjectURL(url);
+      return;
+    }
+    dataUrl = await fileToDataURL(f);
+    cropped = await cropToAlphaBounds(temp);
+    statusEl.textContent="画像OK";
+    syncUI();
+  };
+  temp.src=url;
+});
+
+resetBtn.addEventListener("click", ()=>{
+  cropped=null; dataUrl=null;
+  statusEl.textContent="画像未読み込み";
+  syncUI();
+});
+
+nameInput.addEventListener("input", syncUI);
+
+saveBtn.addEventListener("click", ()=>{
+  if(!cropped || !dataUrl) return;
+  const nm=(nameInput.value || "").trim();
+  if(!nm){ alert("名前を入力してください"); return; }
+
+  const payload={
+    format:"CHAR_CUSTOM_1",
+    name:nm,
+    motionLevel,
+    image:{
+      dataUrl,
+      crop:{sx:cropped.sx, sy:cropped.sy, sw:cropped.sw, sh:cropped.sh}
+    }
+  };
+
+  const blob=new Blob([JSON.stringify(payload)], {type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+
+  // .char.json みたいな拡張子にしておくと分かりやすい
+  const safeName = nm.replace(/[\\\/:*?"<>|]/g,"_");
+  a.download = `${safeName}.char.json`;
+
+  a.click();
+});
+
+function syncUI(){
+  const ready=!!cropped;
+  saveBtn.disabled=!ready || !(nameInput.value||"").trim();
+  resetBtn.disabled=!ready;
+
+  infoEl.textContent = ready
+    ? JSON.stringify({ name:(nameInput.value||"").trim()||"(未入力)", motionLevel, crop:{w:cropped.sw,h:cropped.sh} })
+    : "—";
+}
+
+// dataURL
+function fileToDataURL(file){
+  return new Promise((res, rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+// 透明部分を切り落とす
+async function cropToAlphaBounds(sourceImg){
+  const off=document.createElement("canvas");
+  off.width=sourceImg.width; off.height=sourceImg.height;
+  const octx=off.getContext("2d",{willReadFrequently:true});
+  octx.drawImage(sourceImg,0,0);
+
+  const imgd=octx.getImageData(0,0,off.width,off.height);
+  const d=imgd.data;
+
+  let minX=off.width, minY=off.height, maxX=-1, maxY=-1;
+  const TH=8;
+
+  for(let y=0;y<off.height;y++){
+    const row=y*off.width*4;
+    for(let x=0;x<off.width;x++){
+      if(d[row + x*4 + 3] > TH){
+        if(x<minX) minX=x;
+        if(y<minY) minY=y;
+        if(x>maxX) maxX=x;
+        if(y>maxY) maxY=y;
+      }
+    }
+  }
+  if(maxX<0){ minX=0; minY=0; maxX=off.width-1; maxY=off.height-1; }
+
+  const pad=2;
+  minX=Math.max(0, minX-pad);
+  minY=Math.max(0, minY-pad);
+  maxX=Math.min(off.width-1, maxX+pad);
+  maxY=Math.min(off.height-1, maxY+pad);
+
+  const sw=maxX-minX+1, sh=maxY-minY+1;
+
+  const cut=document.createElement("canvas");
+  cut.width=sw; cut.height=sh;
+  cut.getContext("2d").drawImage(off, minX,minY,sw,sh, 0,0,sw,sh);
+
+  return { canvas:cut, sx:minX, sy:minY, sw, sh };
+}
+
+// 描画（全体ゆらゆらのみ。横線対策：整数＋余白）
+function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+
+  if(!cropped){
+    ctx.save();
+    ctx.fillStyle="rgba(232,235,255,0.85)";
+    ctx.font="20px system-ui";
+    ctx.fillText("立ち絵をアップロードしてください", 70, 120);
+    ctx.restore();
+    return;
+  }
+
+  const p=levelParams(motionLevel);
+  const w=(2*Math.PI)/p.period;
+  const ph=w*t;
+
+  // 静止（lv1）は完全停止
+  const swayX = (motionLevel===1) ? 0 : Math.sin(ph*1.03 + 0.6) * p.swayX;
+  const bobY  = (motionLevel===1) ? 0 : Math.sin(ph*2.00) * p.bobY;
+  const rot   = (motionLevel===1) ? 0 : Math.sin(ph*0.90) * p.rot;
+
+  const c=cropped.canvas;
+  const dw=c.width, dh=c.height;
+
+  const x = Math.floor(CANVAS_W/2 - dw/2 + swayX);
+  const y = Math.floor(CANVAS_H/2 - dh/2 + bobY);
+
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+
+  // 回転支点＝画像の中心少し下（自然）
+  const px = Math.floor(CANVAS_W/2);
+  const py = Math.floor(CANVAS_H/2 + dh*0.10);
+
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(rot*Math.PI/180);
+  ctx.translate(-px, -py);
+
+  ctx.drawImage(c, 0,0,dw,dh, x,y, dw,dh);
+
+  ctx.restore();
+
+  // 枠
+  ctx.save();
+  ctx.strokeStyle="rgba(125,211,252,0.12)";
+  ctx.strokeRect(0.5,0.5,CANVAS_W-1,CANVAS_H-1);
+  ctx.restore();
+}
+
+function tick(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=(ts-lastTs)/1000;
+  lastTs=ts;
+  t += dt;
+  draw();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+syncUI();
+</script>
+</body>
+</html>
 
