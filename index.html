@@ -1,237 +1,548 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>Canvas Editor FINAL STABLE</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>【キャラ1人画面】</title>
 
-<style>
-body{
-  margin:0;
-  display:flex;
-  height:100vh;
-  background:#222;
-  color:#fff;
-  font-family:sans-serif;
-}
-#canvasWrap{
-  flex:1;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background:#000;
-}
-canvas{
-  background:#555;
-  touch-action:none;
-}
-#panel{
-  width:420px;
-  padding:10px;
-  background:#333;
-  overflow:auto;
-}
-.layer-item{
-  background:#444;
-  padding:4px;
-  margin-bottom:4px;
-  font-size:11px;
-  cursor:pointer;
-}
-.layer-item.active{ background:#666; }
-label{ font-size:12px; display:block; margin-top:6px; }
-input,button{ width:100%; }
-#logBox{
-  background:#111;
-  font-size:11px;
-  padding:6px;
-  white-space:pre-wrap;
-  max-height:200px;
-  overflow:auto;
-}
-</style>
+  <style>
+    :root{
+      --VW: 1280;
+      --VH: 720;
+      --scale: 1;
+    }
+
+    html, body{
+      width:100%;
+      height:100%;
+      margin:0;
+      overflow:hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:#111;
+    }
+
+    .stage{
+      position:fixed;
+      inset:0;
+      overflow:hidden;
+      background:
+        radial-gradient(1200px 600px at 50% 40%, rgba(255,255,255,.08), rgba(0,0,0,0)),
+        linear-gradient(180deg, #1a1a1a, #0f0f0f);
+    }
+
+    .stage::before{
+      content:"";
+      position:absolute;
+      inset:-40px;
+      background-image: url("./ed04a2728cfb3679954121cdfc6c811a.jpg");
+      background-size: cover;
+      background-position: center;
+      filter: blur(18px) saturate(1.05) brightness(.9);
+      opacity: .55;
+      transform: scale(1.05);
+    }
+
+    .viewport{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width: calc(var(--VW) * 1px);
+      height: calc(var(--VH) * 1px);
+      transform: translate(-50%, -50%) scale(var(--scale));
+      transform-origin: center center;
+      pointer-events:auto;
+    }
+
+    .scene{
+      position:relative;
+      width:100%;
+      height:100%;
+      overflow:hidden;
+      background:#000;
+      user-select:none;
+      border-radius: 10px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    }
+
+    .bg{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      z-index:0;
+    }
+
+    /* 🧍 立ち絵（JSで transform 上書きしてふわゆら） */
+    .chara{
+      position:absolute;
+      left:50%;
+      top:3%;
+      height:110%;
+      width:auto;
+      object-fit:contain;
+      z-index:2;
+      pointer-events:none;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+      transform-origin: top center;
+      will-change: transform;
+    }
+
+    .windowWrap{
+      position:absolute;
+      left:50%;
+      bottom:3%;
+      transform:translateX(-50%);
+      width:60%;
+      max-width:840px;
+      z-index:5;
+      pointer-events:none;
+    }
+    .ui{
+      width:100%;
+      height:auto;
+      display:block;
+    }
+
+    .nameBox{
+      position:absolute;
+      left:35px;
+      top:30px;
+      z-index:6;
+      pointer-events:none;
+    }
+    .nameBox span{
+      display:inline-block;
+      background:#ff2b6a;
+      color:#fff;
+      padding:6px 14px;
+      border-radius:12px;
+      font-weight:700;
+      font-size:18px;
+      line-height:1.1;
+      white-space:nowrap;
+    }
+
+    .textBox{
+      position:absolute;
+      left:55px;
+      right:70px;
+      top:70px;
+      bottom:44px;
+      z-index:6;
+      pointer-events:none;
+      color:#222;
+      font-size:18px;
+      line-height:1.65;
+      white-space:pre-wrap;
+      box-sizing:border-box;
+    }
+
+    /* 🧩 アイコン（そのまま残す） */
+    .sideBar{
+      position:absolute;
+      top:10%;
+      bottom:14%;
+      width:130px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      z-index:7;
+      padding:10px;
+      box-sizing:border-box;
+      pointer-events:none;
+      align-items:center;
+    }
+    .sideBar.left{ left:1.0%; }
+    .sideBar.right{ right:1.0%; }
+
+    .icon{
+      width:110px;
+      height:110px;
+      object-fit:contain;
+      display:block;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,.18));
+    }
+
+    /* =========================
+       💾 セーブ/ロードUI（仮）
+       ※後でアイコンボタンに置き換えOK
+    ========================= */
+    .saveBtn{
+      position:absolute;
+      right:16px;
+      top:16px;
+      z-index:20;
+      pointer-events:auto;
+      background: rgba(0,0,0,.55);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:700;
+      cursor:pointer;
+      backdrop-filter: blur(6px);
+    }
+
+    .modalBg{
+      position:absolute;
+      inset:0;
+      z-index:30;
+      background: rgba(0,0,0,.55);
+      display:none;
+      pointer-events:auto;
+    }
+    .modalBg.show{ display:block; }
+
+    .modal{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform: translate(-50%, -50%);
+      width: min(780px, 92%);
+      background: rgba(20,20,20,.92);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:16px;
+      padding:18px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal h2{
+      margin:0 0 8px 0;
+      font-size:18px;
+    }
+
+    .note{
+      margin:10px 0 14px 0;
+      font-size:13px;
+      line-height:1.6;
+      color: rgba(255,255,255,.9);
+    }
+    .note strong{ color:#fff; }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin:10px 0;
+    }
+
+    .primary{
+      background:#ff2b6a;
+      color:#fff;
+      border:none;
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .ghost{
+      background: rgba(255,255,255,.10);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .field{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+      font-size:13px;
+      color: rgba(255,255,255,.85);
+    }
+
+    input[type="text"]{
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:10px;
+      padding:10px 12px;
+      color:#fff;
+      outline:none;
+      width: 240px;
+    }
+
+    input[type="file"]{
+      color:#fff;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .chara{ transform: translateX(-50%) scale(1.10) !important; }
+    }
+  </style>
 </head>
 
 <body>
+  <div class="stage">
+    <div class="viewport">
+      <div class="scene" role="application" aria-label="キャラ1人画面">
 
-<div id="canvasWrap">
-  <canvas id="canvas"></canvas>
-</div>
+        <!-- 背景 -->
+        <img class="bg" src="./ed04a2728cfb3679954121cdfc6c811a.jpg" alt="背景" />
 
-<div id="panel">
-  <label>画像追加 <input type="file" id="imgInput"></label>
+        <!-- 左アイコン -->
+        <div class="sideBar left" aria-hidden="true">
+          <img class="icon" src="./発注書.png" alt="">
+          <img class="icon" src="./ダンボール.png" alt="">
+          <img class="icon" src="./発注書.png" alt="">
+        </div>
 
-  <div id="layerList"></div>
+        <!-- 右アイコン -->
+        <div class="sideBar right" aria-hidden="true">
+          <img class="icon" src="./ダンボール.png" alt="">
+          <img class="icon" src="./発注書.png" alt="">
+          <img class="icon" src="./ダンボール.png" alt="">
+        </div>
 
-  <h3>数値調整（安全）</h3>
-  <label>X <input type="number" id="xI"></label>
-  <label>Y <input type="number" id="yI"></label>
-  <label>Scale <input type="number" step="0.01" id="sI"></label>
-  <label>Rotate <input type="number" id="rI"></label>
-  <label>Float（0〜10） <input type="number" min="0" max="10" id="fI"></label>
-  <label>Speed（1〜10） <input type="number" min="1" max="10" id="spI"></label>
+        <!-- 立ち絵 -->
+        <img class="chara" src="./全身立ち絵.png" alt="キャラ立ち絵" />
 
-  <button id="snapshotBtn">スナップショット保存</button>
-  <div id="logBox"></div>
-</div>
+        <!-- 会話ウィンドウ -->
+        <div class="windowWrap">
+          <img class="ui" src="./ウィンドウ仮.png" alt="会話ウィンドウ" />
 
-<script>
-/* ===== 基本 ===== */
-const BASE_W=1280, BASE_H=720;
-const FLOAT_PX=4, SPEED_UNIT=0.8;
+          <div class="nameBox" aria-hidden="true">
+            <span>橋本</span>
+          </div>
 
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
-const wrap=document.getElementById("canvasWrap");
+          <div class="textBox" aria-live="polite">
+これはサンプルテキストです。今日も良い天気だなぁ🌞✨
+          </div>
+        </div>
 
-/* ===== resize ===== */
-function resize(){
-  const r=wrap.getBoundingClientRect();
-  const sc=Math.min(r.width/BASE_W,r.height/BASE_H);
-  canvas.width=BASE_W*sc;
-  canvas.height=BASE_H*sc;
-  ctx.setTransform(sc,0,0,sc,0,0);
-}
-window.addEventListener("resize",resize);
-resize();
+        <!-- 💾 セーブ/ロード（仮ボタン） -->
+        <button class="saveBtn" id="openSave">セーブ/ロード</button>
 
-/* ===== 状態 ===== */
-let layers=[];
-let current=null;
+        <!-- 💾 モーダル -->
+        <div class="modalBg" id="modalBg" aria-hidden="true">
+          <div class="modal" role="dialog" aria-modal="true" aria-label="セーブ/ロード">
+            <h2>💾 セーブデータ（書き出し／読み込み）</h2>
 
-/* ===== UI参照 ===== */
-const listEl=document.getElementById("layerList");
-const xI=document.getElementById("xI");
-const yI=document.getElementById("yI");
-const sI=document.getElementById("sI");
-const rI=document.getElementById("rI");
-const fI=document.getElementById("fI");
-const spI=document.getElementById("spI");
-const logBox=document.getElementById("logBox");
+            <div class="note">
+              ⚠️ <strong>注意</strong><br>
+              素人制作の同人ゲームにつき、iPhoneの設定などでSafariの履歴／キャッシュ／サイトデータを削除すると、
+              ブラウザ内のセーブデータが消える場合があります。<br><br>
+              ✅ 安全のため、定期的に「セーブデータを書き出し」してファイルアプリ等に保存しておいてください。<br>
+              続きを遊ぶときは「セーブデータを読み込む」からファイルを選ぶと復帰できます。
+            </div>
 
-/* ===== 画像追加 ===== */
-imgInput.onchange=e=>{
-  const f=e.target.files[0];
-  const img=new Image();
-  img.onload=()=>{
-    const l={name:f.name,img,x:BASE_W/2,y:BASE_H/2,scale:1,rotate:0,float:0,speed:5};
-    layers.unshift(l);
-    setCurrent(l);
-  };
-  img.src=URL.createObjectURL(f);
-};
+            <div class="field">
+              👤 プレイヤーネーム：
+              <input type="text" id="playerName" placeholder="例：はなこ" />
+              <button class="ghost" id="saveName">保存</button>
+            </div>
 
-/* ===== レイヤーUI ===== */
-function renderLayerList(){
-  listEl.innerHTML="";
-  layers.forEach((l,i)=>{
-    const d=document.createElement("div");
-    d.className="layer-item"+(l===current?" active":"");
-    d.textContent=`${i+1} ${l.name}`;
-    d.onclick=()=>setCurrent(l);
-    listEl.appendChild(d);
-  });
-}
+            <div class="row">
+              <button class="primary" id="exportBtn">⬇️ セーブデータを書き出し</button>
+              <label class="ghost" style="display:inline-flex; gap:8px; align-items:center;">
+                ⬆️ セーブデータを読み込む
+                <input type="file" id="importFile" accept="application/json" style="width:220px;">
+              </label>
+              <button class="ghost" id="closeSave">閉じる</button>
+            </div>
 
-function setCurrent(layer){
-  current=layer;
-  renderLayerList();
-  updateInputsFromLayer();
-}
+            <div class="note" id="statusText" style="margin-top:8px; opacity:.9;"></div>
+          </div>
+        </div>
 
-/* ===== UI ← 状態（表示のみ） ===== */
-function updateInputsFromLayer(){
-  if(!current) return;
-  xI.value=current.x;
-  yI.value=current.y;
-  sI.value=current.scale;
-  rI.value=current.rotate;
-  fI.value=current.float;
-  spI.value=current.speed;
-}
+      </div>
+    </div>
+  </div>
 
-/* ===== UI → 状態（安全） ===== */
-xI.oninput=()=>current && (current.x=+xI.value);
-yI.oninput=()=>current && (current.y=+yI.value);
-sI.oninput=()=>current && (current.scale=+sI.value);
-rI.oninput=()=>current && (current.rotate=+rI.value);
-fI.oninput=()=>current && (current.float=+fI.value);
-spI.oninput=()=>current && (current.speed=+spI.value);
+  <script>
+    // =========================
+    // 📐 scale = min(w/1280, h/720)
+    // =========================
+    (function(){
+      const root = document.documentElement;
+      const VW = 1280;
+      const VH = 720;
 
-/* ===== タッチ操作 ===== */
-let pointers=new Map();
-let gesture=null;
+      function updateScale(){
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const s = Math.min(w / VW, h / VH);
+        root.style.setProperty("--scale", String(s));
+      }
 
-canvas.addEventListener("pointerdown",e=>{
-  canvas.setPointerCapture(e.pointerId);
-  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(pointers.size===2 && current){
-    const p=[...pointers.values()];
-    const dx=p[1].x-p[0].x, dy=p[1].y-p[0].y;
-    gesture={
-      dist:Math.hypot(dx,dy),
-      angle:Math.atan2(dy,dx),
-      scale:current.scale,
-      rotate:current.rotate
-    };
-  }
-});
+      window.addEventListener("resize", updateScale, { passive: true });
+      updateScale();
+    })();
 
-canvas.addEventListener("pointerup",e=>{
-  pointers.delete(e.pointerId);
-  if(pointers.size<2) gesture=null;
-});
+    // =========================
+    // 🌸 立ち絵ふわゆら（速め・揺れ小さめ）
+    // =========================
+    (function(){
+      const chara = document.querySelector(".chara");
+      const baseScale = 1.10;
 
-canvas.addEventListener("pointermove",e=>{
-  if(!current||!pointers.has(e.pointerId)) return;
-  const prev=pointers.get(e.pointerId);
-  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  const rect=canvas.getBoundingClientRect();
+      const speed = 0.022; // 速め（0.018〜0.030）
+      const ampY  = 5;     // 揺れ幅（小さめ）
+      const ampX  = 2;
+      const ampR  = 0.25;
 
-  if(pointers.size===1){
-    current.x+=(e.clientX-prev.x)*BASE_W/rect.width;
-    current.y+=(e.clientY-prev.y)*BASE_H/rect.height;
-    updateInputsFromLayer();
-  }
+      let t = 0;
+      function tick(){
+        t += speed;
+        const y = Math.sin(t) * ampY;
+        const x = Math.sin(t * 0.73) * ampX;
+        const r = Math.sin(t * 0.49) * ampR;
 
-  if(pointers.size===2 && gesture){
-    const p=[...pointers.values()];
-    const dx=p[1].x-p[0].x, dy=p[1].y-p[0].y;
-    current.scale=gesture.scale*(Math.hypot(dx,dy)/gesture.dist);
-    current.rotate=gesture.rotate+(Math.atan2(dy,dx)-gesture.angle)*180/Math.PI;
-    updateInputsFromLayer();
-  }
-});
+        chara.style.transform =
+          `translateX(-50%) translate(${x}px, ${-y}px) rotate(${r}deg) scale(${baseScale})`;
 
-/* ===== 描画 ===== */
-let start=performance.now();
-function draw(){
-  const t=(performance.now()-start)/1000;
-  ctx.fillStyle="#555";
-  ctx.fillRect(0,0,BASE_W,BASE_H);
-  layers.slice().reverse().forEach(l=>{
-    if(!l.img.complete) return;
-    const fy=Math.sin(t*l.speed*SPEED_UNIT)*l.float*FLOAT_PX;
-    ctx.save();
-    ctx.translate(l.x,l.y+fy);
-    ctx.rotate(l.rotate*Math.PI/180);
-    ctx.scale(l.scale,l.scale);
-    ctx.drawImage(l.img,-l.img.width/2,-l.img.height/2);
-    ctx.restore();
-  });
-  requestAnimationFrame(draw);
-}
-draw();
+        requestAnimationFrame(tick);
+      }
 
-/* ===== ログ ===== */
-snapshotBtn.onclick=()=>{
-  let txt="SNAPSHOT\n";
-  layers.forEach((l,i)=>{
-    txt+=`${i+1} ${l.name} x:${l.x} y:${l.y} s:${l.scale} r:${l.rotate} f:${l.float} sp:${l.speed}\n`;
-  });
-  logBox.prepend(Object.assign(document.createElement("div"),{textContent:txt}));
-};
-</script>
+      if (chara.complete) tick();
+      else chara.addEventListener("load", tick, { once: true });
+    })();
 
+    // =========================
+    // 💾 セーブデータ：書き出し／読み込み
+    // localStorage を使用（初心者向けに簡単）
+    // =========================
+    (function(){
+      const GAME_TITLE = "ゲームタイトル"; // ←ここだけ好きに変えてOK
+      const KEY_PLAYER = "mygame_playerName";
+      const KEY_SAVE   = "mygame_saveState";
+
+      const openBtn = document.getElementById("openSave");
+      const modalBg = document.getElementById("modalBg");
+      const closeBtn = document.getElementById("closeSave");
+      const exportBtn = document.getElementById("exportBtn");
+      const importFile = document.getElementById("importFile");
+      const playerNameInput = document.getElementById("playerName");
+      const saveNameBtn = document.getElementById("saveName");
+      const statusText = document.getElementById("statusText");
+
+      function setStatus(msg){
+        statusText.textContent = msg;
+      }
+
+      function openModal(){
+        modalBg.classList.add("show");
+        modalBg.setAttribute("aria-hidden", "false");
+      }
+      function closeModal(){
+        modalBg.classList.remove("show");
+        modalBg.setAttribute("aria-hidden", "true");
+      }
+
+      // プレイヤーネームの保存/復元
+      const storedName = localStorage.getItem(KEY_PLAYER) || "";
+      playerNameInput.value = storedName;
+
+      saveNameBtn.addEventListener("click", () => {
+        localStorage.setItem(KEY_PLAYER, playerNameInput.value.trim());
+        setStatus("✅ プレイヤーネームを保存しました。");
+      });
+
+      openBtn.addEventListener("click", () => {
+        setStatus("");
+        openModal();
+      });
+      closeBtn.addEventListener("click", closeModal);
+      modalBg.addEventListener("click", (e) => {
+        if (e.target === modalBg) closeModal();
+      });
+
+      // ✅ あなたのゲームの進行データ（サンプル）
+      // ここを本番の変数に置き換えるだけで完成
+      function getCurrentGameState(){
+        return {
+          sceneId: 1,
+          lineIndex: 12,
+          flags: { metA: true },
+          // 例：所持アイテムや好感度などもここに入れる
+        };
+      }
+
+      function applyGameState(state){
+        // 本番ではここで UI や進行変数を復元する
+        // いまはサンプルで表示だけ
+        setStatus("✅ 読み込み成功：sceneId=" + state.sceneId + " / lineIndex=" + state.lineIndex);
+      }
+
+      function pad2(n){ return String(n).padStart(2, "0"); }
+
+      function makeFileName(){
+        const nameRaw = (playerNameInput.value.trim() || "名無し");
+        // ファイル名に使えない文字を避ける（: / \ など）
+        const safeName = nameRaw.replace(/[\\\/:*?"<>|]/g, " ");
+
+        const d = new Date();
+        const Y = d.getFullYear();
+        const M = pad2(d.getMonth() + 1);
+        const D = pad2(d.getDate());
+        const h = pad2(d.getHours());
+        const m = pad2(d.getMinutes());
+
+        // 希望フォーマット：
+        // 【ゲームタイトル】プレイヤーネーム：YYYY年MM月DD日：HH時MM分.json
+        return `【${GAME_TITLE}】${safeName}：${Y}年${M}月${D}日：${h}時${m}分.json`;
+      }
+
+      // ⬇️ 書き出し
+      exportBtn.addEventListener("click", () => {
+        const payload = {
+          version: 1,
+          gameTitle: GAME_TITLE,
+          playerName: playerNameInput.value.trim() || "名無し",
+          savedAtISO: new Date().toISOString(),
+          state: getCurrentGameState(),
+        };
+
+        // ついでにブラウザ内にも保存（任意）
+        localStorage.setItem(KEY_SAVE, JSON.stringify(payload));
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = makeFileName();
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        URL.revokeObjectURL(url);
+
+        setStatus("⬇️ 書き出ししました。ファイルアプリ（またはダウンロード）に保存してください。");
+      });
+
+      // ⬆️ 読み込み
+      importFile.addEventListener("change", async () => {
+        const file = importFile.files && importFile.files[0];
+        if (!file) return;
+
+        try{
+          const text = await file.text();
+          const data = JSON.parse(text);
+
+          if (!data || typeof data !== "object" || !data.state){
+            throw new Error("セーブデータ形式が違います。");
+          }
+
+          // ブラウザ内にも反映（任意）
+          localStorage.setItem(KEY_SAVE, JSON.stringify(data));
+
+          applyGameState(data.state);
+        }catch(err){
+          setStatus("❌ 読み込み失敗：" + (err && err.message ? err.message : String(err)));
+        }finally{
+          // 同じファイルを再度選べるようにクリア
+          importFile.value = "";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
